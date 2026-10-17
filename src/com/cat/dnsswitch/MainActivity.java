@@ -144,6 +144,11 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, android.content.Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_VPN) {
+            if (resultCode == RESULT_OK) startLocalVpn();
+            else toast("系统没给 VPN 权限");
+            return;
+        }
         if (requestCode != REQ_EXPORT) return;
 
         if (resultCode != RESULT_OK || data == null || data.getData() == null) {
@@ -603,6 +608,73 @@ public class MainActivity extends Activity {
                 });
             }
         }, "prts-dns").start();
+    }
+
+    // ==================== 本地 VPN 广告拦截 ====================
+
+    private static final int REQ_VPN = 1002;
+    private boolean vpnTicking = false;
+
+    /** 停在 [SYS] 页且 VPN 在跑时，每 2 秒重绘一次，统计数字才会动 */
+    private final Runnable vpnTick = new Runnable() {
+        @Override public void run() {
+            vpnTicking = false;
+            if (curTab == 4 && AdBlockVpnService.running) renderContent();
+        }
+    };
+
+    private void startVpnTick() {
+        if (vpnTicking || !AdBlockVpnService.running) return;
+        vpnTicking = true;
+        ui.postDelayed(vpnTick, 2000);
+    }
+
+    private void vpnToggle() {
+        if (AdBlockVpnService.running) { stopLocalVpn(); return; }
+        try {
+            android.content.Intent prep = android.net.VpnService.prepare(this);
+            if (prep != null) {
+                addRunLog(now() + "  VPN       →  等待系统授权");
+                startActivityForResult(prep, REQ_VPN);
+            } else {
+                startLocalVpn();
+            }
+        } catch (Exception e) {
+            toast("打不开 VPN 授权：" + e.getMessage());
+        }
+    }
+
+    private void startLocalVpn() {
+        try {
+            android.content.Intent i = new android.content.Intent(this, AdBlockVpnService.class);
+            i.setAction(AdBlockVpnService.ACTION_START);
+            if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(i);
+            else startService(i);
+            addRunLog(now() + "  VPN       →  开启本地拦截");
+            toast("本地拦截已开启");
+        } catch (Exception e) {
+            toast("开启失败：" + e.getMessage());
+        }
+        ui.postDelayed(new Runnable() { @Override public void run() {
+            refresh();
+            if (curTab == 4) renderContent();
+        } }, 1200);
+    }
+
+    private void stopLocalVpn() {
+        try {
+            android.content.Intent i = new android.content.Intent(this, AdBlockVpnService.class);
+            i.setAction(AdBlockVpnService.ACTION_STOP);
+            startService(i);
+            stopService(i);
+            addRunLog(now() + "  VPN       →  关闭本地拦截");
+            toast("本地拦截已关闭");
+        } catch (Exception e) {
+            toast("关闭失败：" + e.getMessage());
+        }
+        ui.postDelayed(new Runnable() { @Override public void run() {
+            if (curTab == 4) renderContent();
+        } }, 800);
     }
 
     /** 扫已装 App 里嵌了哪些推广 SDK（走 Shizuku，后台跑） */
@@ -1359,6 +1431,40 @@ public class MainActivity extends Activity {
         contentBox.addView(kv(L("LOG_LINES", "日志行数"),
                 L("RUN", "运行") + " " + countLines("run_log")
                 + "  /  " + L("BLOCK", "拦截") + " " + countLines("block_log")));
+        // ---- 本地 VPN 广告拦截 ----
+        contentBox.addView(divider());
+        TextView vpnHead = tv("// LOCAL_VPN  ·  本地广告拦截（只接管 DNS）", 11, C_GREEN_D, false);
+        vpnHead.setPadding(0, 0, 0, dp(6));
+        contentBox.addView(vpnHead);
+        boolean vpnOn = AdBlockVpnService.running;
+        long vq = AdBlockVpnService.statQueries;
+        long vb = AdBlockVpnService.statBlocked;
+        contentBox.addView(kv(L("VPN_STATUS", "状态"),
+                vpnOn ? L("RUNNING", "运行中") : L("STOPPED", "已停止")));
+        contentBox.addView(kv(L("VPN_QUERIES", "总查询数"), String.valueOf(vq)));
+        contentBox.addView(kv(L("VPN_BLOCKED", "已拦截"), String.valueOf(vb)));
+        contentBox.addView(kv(L("VPN_DOMAINS", "唯一域名"),
+                String.valueOf(AdBlockVpnService.uniqueDomains())));
+        contentBox.addView(kv(L("VPN_RATE", "拦截率"),
+                vq == 0 ? "—" : String.format(java.util.Locale.US, "%.1f%%", 100.0 * vb / vq)));
+        if (AdBlockVpnService.lastBlocked != null && !AdBlockVpnService.lastBlocked.isEmpty()) {
+            contentBox.addView(kv(L("VPN_LAST", "最近拦截"), AdBlockVpnService.lastBlocked));
+        }
+        btnFull(vpnOn ? "> 关闭本地拦截" : "> 开启本地拦截",
+                vpnOn ? C_DANGER : C_GREEN, new View.OnClickListener() {
+            @Override public void onClick(View v) { vpnToggle(); }
+        });
+        btnFull("> 清空本地统计", C_GREEN_D, new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                AdBlockVpnService.resetStats();
+                addRunLog(now() + "  VPN       →  统计已清空");
+                renderContent();
+            }
+        });
+        hint("只接管 DNS 查询，其他流量不进 VPN —— 不耗电、不影响别的 App，也不和别的 VPN 抢。\n"
+             + "第一次开启系统会弹一次授权，点允许就行。", C_DIM);
+        startVpnTick();
+
         contentBox.addView(divider());
         TextView sdkHead = tv("// AD_SDK_SCAN  ·  扫描已装 App 里的推广 SDK", 11, C_GREEN_D, false);
         sdkHead.setPadding(0, 0, 0, dp(6));
