@@ -2,7 +2,6 @@ package com.cat.dnsswitch;
 
 import android.app.Activity;
 import android.app.Dialog;
-import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -30,18 +29,20 @@ import android.widget.Toast;
 import java.io.ByteArrayInputStream;
 
 /**
- * 内置浏览器 · 早期信息终端风格（白底蓝字）
+ * 内置浏览器 · 柔和圆角风格（浅蓝白底 + 白色卡片 + 圆角）
  * 靠 shouldInterceptRequest 把广告域名的子资源掐掉。
  */
 public class BrowserActivity extends Activity {
 
-    // 早期终端配色：白底 + 深蓝
-    private static final int C_BG    = 0xFFFFFFFF;   // 纸白
-    private static final int C_BLUE  = 0xFF12308C;   // 主蓝
-    private static final int C_BLUE2 = 0xFF2E5BFF;   // 亮蓝
-    private static final int C_DIM   = 0xFF7A8DB8;   // 淡蓝灰
-    private static final int C_BOX   = 0xFFDCE4F5;   // 边框浅蓝
-    private static final int C_FILL  = 0xFFF2F5FC;   // 输入框底色
+    // 柔和配色
+    private static final int C_PAGE    = 0xFFF4F7FE;   // 页面底：很浅的蓝白
+    private static final int C_CARD    = 0xFFFFFFFF;   // 卡片白
+    private static final int C_ACCENT  = 0xFF3D7BFF;   // 主蓝
+    private static final int C_ACCENT2 = 0xFF6B9BFF;   // 次蓝
+    private static final int C_SOFT    = 0xFFEAF1FF;   // 浅蓝底（选中/胶囊）
+    private static final int C_TEXT    = 0xFF1F2A44;   // 主文字
+    private static final int C_TEXT2   = 0xFF8093B0;   // 次文字
+    private static final int C_LINE    = 0xFFE6ECF7;   // 分割线
 
     private WebView web;
     private EditText bar;
@@ -54,7 +55,6 @@ public class BrowserActivity extends Activity {
     private String seName = "百度";
     private String seUrl  = "https://www.baidu.com/s?wd=%s";
 
-    /** 搜索引擎表：国内 + 国外 + 自定义 */
     private static final String[][] ENGINES = {
             { "百度",      "https://www.baidu.com/s?wd=%s" },
             { "搜狗",      "https://www.sogou.com/web?query=%s" },
@@ -69,7 +69,6 @@ public class BrowserActivity extends Activity {
             { "Ecosia",   "https://www.ecosia.org/search?q=%s" }
     };
 
-    /** 彩蛋：命中这些关键词就弹「证书错误」喵 */
     private static final String[] ADULT = {
             "pornhub", "xvideos", "xnxx", "xhamster", "youporn", "spankbang",
             "redtube", "beeg", "hqporner", "eporner", "txxx", "tube8",
@@ -118,34 +117,38 @@ public class BrowserActivity extends Activity {
     private View buildUi() {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(C_BG);
+        root.setBackgroundColor(C_PAGE);
 
-        // ---- 命令栏 ----
-        LinearLayout top = new LinearLayout(this);
-        top.setOrientation(LinearLayout.HORIZONTAL);
-        top.setGravity(Gravity.CENTER_VERTICAL);
-        top.setBackgroundColor(C_FILL);
-        top.setPadding(dp(6), dp(26), dp(6), dp(6));
+        // ---- 顶栏白卡片 ----
+        LinearLayout topCard = new LinearLayout(this);
+        topCard.setOrientation(LinearLayout.HORIZONTAL);
+        topCard.setGravity(Gravity.CENTER_VERTICAL);
+        topCard.setBackground(round(C_CARD, 0, C_CARD, 20));
+        topCard.setElevation(dp(2));
+        topCard.setPadding(dp(8), dp(8), dp(8), dp(8));
+        LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        cardLp.setMargins(dp(10), dp(26), dp(10), 0);
+        topCard.setLayoutParams(cardLp);
 
-        top.addView(btn("\u2190", new View.OnClickListener() {
+        topCard.addView(roundBtn("\u2190", new View.OnClickListener() {
             @Override public void onClick(View v) { if (web.canGoBack()) web.goBack(); }
         }));
-        top.addView(btn("\u2192", new View.OnClickListener() {
+        topCard.addView(roundBtn("\u2192", new View.OnClickListener() {
             @Override public void onClick(View v) { if (web.canGoForward()) web.goForward(); }
         }));
-        top.addView(btn("\u21bb", new View.OnClickListener() {
+        topCard.addView(roundBtn("\u21bb", new View.OnClickListener() {
             @Override public void onClick(View v) { web.reload(); }
         }));
 
         bar = new EditText(this);
         bar.setSingleLine(true);
-        bar.setTextColor(C_BLUE);
-        bar.setHintTextColor(C_DIM);
-        bar.setHint("> 输入网址或搜索词");
+        bar.setTextColor(C_TEXT);
+        bar.setHintTextColor(C_TEXT2);
+        bar.setHint("搜索或输入网址");
         bar.setTextSize(13);
-        bar.setTypeface(Typeface.MONOSPACE);
-        bar.setBackground(box(0xFFFFFFFF, C_BOX, 1));
-        bar.setPadding(dp(8), dp(5), dp(8), dp(5));
+        bar.setBackground(round(C_PAGE, 0, C_PAGE, 16));
+        bar.setPadding(dp(14), dp(7), dp(14), dp(7));
         bar.setInputType(InputType.TYPE_TEXT_VARIATION_URI);
         bar.setImeOptions(EditorInfo.IME_ACTION_GO);
         bar.setOnEditorActionListener(new TextView.OnEditorActionListener() {
@@ -160,49 +163,52 @@ public class BrowserActivity extends Activity {
                 return false;
             }
         });
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0,
+        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        lp.setMargins(dp(3), 0, dp(3), 0);
-        top.addView(bar, lp);
+        blp.setMargins(dp(6), 0, dp(6), 0);
+        topCard.addView(bar, blp);
 
-        top.addView(btn("GO", new View.OnClickListener() {
+        TextView goBtn = new TextView(this);
+        goBtn.setText("GO");
+        goBtn.setTextColor(0xFFFFFFFF);
+        goBtn.setTextSize(12);
+        goBtn.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        goBtn.setGravity(Gravity.CENTER);
+        goBtn.setPadding(dp(16), dp(8), dp(16), dp(8));
+        goBtn.setBackground(round(C_ACCENT, 0, C_ACCENT, 16));
+        goBtn.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { go(); }
-        }));
-        root.addView(top);
+        });
+        topCard.addView(goBtn);
 
-        // ---- 引擎栏：终端式 ----
-        LinearLayout engBar = new LinearLayout(this);
-        engBar.setOrientation(LinearLayout.HORIZONTAL);
-        engBar.setGravity(Gravity.CENTER_VERTICAL);
-        engBar.setBackgroundColor(C_BG);
-        engBar.setPadding(dp(8), dp(4), dp(8), dp(4));
+        root.addView(topCard);
+
+        // ---- 引擎胶囊 + 状态 ----
+        LinearLayout engRow = new LinearLayout(this);
+        engRow.setOrientation(LinearLayout.HORIZONTAL);
+        engRow.setGravity(Gravity.CENTER_VERTICAL);
+        engRow.setPadding(dp(16), dp(8), dp(16), dp(6));
 
         engineBtn = new TextView(this);
-        engineBtn.setTextColor(C_BLUE);
+        engineBtn.setTextColor(C_ACCENT);
         engineBtn.setTextSize(11);
-        engineBtn.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
-        engineBtn.setPadding(dp(8), dp(4), dp(8), dp(4));
-        engineBtn.setBackground(box(0xFFFFFFFF, C_BLUE, 1));
+        engineBtn.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        engineBtn.setPadding(dp(14), dp(6), dp(14), dp(6));
+        engineBtn.setBackground(round(C_SOFT, 0, C_SOFT, 20));
         engineBtn.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { pickEngine(); }
         });
         updateEngineBtn();
-        engBar.addView(engineBtn);
+        engRow.addView(engineBtn);
 
         stat = new TextView(this);
-        stat.setTextColor(C_BLUE);
+        stat.setTextColor(C_TEXT2);
         stat.setTextSize(11);
-        stat.setTypeface(Typeface.MONOSPACE);
-        stat.setPadding(dp(10), 0, 0, 0);
-        stat.setText("PRTS://BROWSER  已拦 0");
-        engBar.addView(stat, new LinearLayout.LayoutParams(0,
+        stat.setPadding(dp(12), 0, 0, 0);
+        stat.setText("已拦截 0");
+        engRow.addView(stat, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        root.addView(engBar);
-
-        View line = new View(this);
-        line.setBackgroundColor(C_BLUE);
-        root.addView(line, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(1)));
+        root.addView(engRow);
 
         // ---- 网页 ----
         web = new WebView(this);
@@ -212,7 +218,7 @@ public class BrowserActivity extends Activity {
         s.setLoadWithOverviewMode(true);
         s.setUseWideViewPort(true);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        web.setBackgroundColor(C_BG);
+        web.setBackgroundColor(C_CARD);
         web.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest req) {
                 String u = req.getUrl() == null ? "" : req.getUrl().toString();
@@ -254,54 +260,54 @@ public class BrowserActivity extends Activity {
                 }
             }
         });
-        root.addView(web, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        LinearLayout.LayoutParams wlp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+        wlp.setMargins(dp(10), dp(4), dp(10), dp(10));
+        root.addView(web, wlp);
+
         return root;
     }
 
     private void updateEngineBtn() {
-        if (engineBtn != null) engineBtn.setText(" 搜索引擎: " + seName + " \u25be");
+        if (engineBtn != null) engineBtn.setText("搜索引擎 · " + seName + "  \u25be");
     }
 
-    // ==================== 搜索引擎 ====================
+    // ==================== 搜索引擎选择 ====================
 
     private void pickEngine() {
         final Dialog d = baseDialog();
 
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setBackground(box(C_BG, C_BLUE, 2));
-        panel.setPadding(dp(14), dp(14), dp(14), dp(14));
+        panel.setBackground(round(C_CARD, 0, C_CARD, 24));
+        panel.setPadding(dp(16), dp(18), dp(16), dp(14));
 
-        TextView title = mono("PRTS://ENGINE-SELECT", 13, C_BLUE, true);
-        title.setLetterSpacing(0.05f);
+        TextView title = rounded("选择搜索引擎", 16, C_TEXT, true);
         panel.addView(title);
 
-        TextView sub = mono("选择搜索引擎 · 共 " + ENGINES.length + " 个内置", 10, C_DIM, false);
-        sub.setPadding(0, dp(4), 0, dp(10));
+        TextView sub = rounded("共 " + ENGINES.length + " 个内置，也可自己填", 11, C_TEXT2, false);
+        sub.setPadding(0, dp(4), 0, dp(14));
         panel.addView(sub);
 
-        panel.addView(secLabel("[ 国内 ]"));
+        panel.addView(secLabel("国内"));
         for (int i = 0; i < 5 && i < ENGINES.length; i++) panel.addView(engineRow(d, i));
 
-        panel.addView(secLabel("[ 国外 ]"));
+        panel.addView(secLabel("国外"));
         for (int i = 5; i < ENGINES.length; i++) panel.addView(engineRow(d, i));
 
-        panel.addView(secLabel("[ 其他 ]"));
-        TextView custom = mono("  + 自定义搜索引擎…", 13, C_BLUE2, true);
-        custom.setPadding(dp(6), dp(10), dp(6), dp(10));
-        custom.setBackground(box(C_BG, C_BOX, 1));
+        panel.addView(secLabel("更多"));
+        TextView custom = rounded("＋  自定义搜索引擎", 13, C_ACCENT, true);
+        custom.setGravity(Gravity.CENTER);
+        custom.setPadding(dp(10), dp(14), dp(10), dp(14));
+        custom.setBackground(round(C_SOFT, 0, C_SOFT, 16));
         custom.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { d.dismiss(); customEngine(); }
         });
-        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        clp.setMargins(0, 0, 0, dp(4));
-        custom.setLayoutParams(clp);
         panel.addView(custom);
 
-        TextView cancel = mono("  × 取消", 12, C_DIM, false);
-        cancel.setPadding(dp(6), dp(9), dp(6), dp(9));
+        TextView cancel = rounded("取消", 13, C_TEXT2, false);
+        cancel.setGravity(Gravity.CENTER);
+        cancel.setPadding(dp(10), dp(14), dp(10), dp(6));
         cancel.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { d.dismiss(); }
         });
@@ -310,7 +316,6 @@ public class BrowserActivity extends Activity {
         showPanel(d, panel);
     }
 
-    /** 一行引擎选项，终端风格的方框 */
     private View engineRow(final Dialog d, final int i) {
         boolean sel = ENGINES[i][0].equals(seName);
         String host = ENGINES[i][1];
@@ -320,27 +325,52 @@ public class BrowserActivity extends Activity {
         int s = host.indexOf('/');
         if (s > 0) host = host.substring(0, s);
 
-        String mark = sel ? " \u25c9  " : " \u25cb  ";
-        String label = mark + ENGINES[i][0] + "\n        " + host;
-        TextView t = mono(label, 13, sel ? C_BLUE2 : C_BLUE, sel);
-        t.setPadding(dp(6), dp(8), dp(6), dp(8));
-        t.setLineSpacing(dp(2), 1f);
-        t.setBackground(box(sel ? C_FILL : C_BG, sel ? C_BLUE2 : C_BOX, sel ? 2 : 1));
-        t.setOnClickListener(new View.OnClickListener() {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(14), dp(12), dp(14), dp(12));
+        row.setBackground(round(sel ? C_SOFT : C_CARD,
+                sel ? 2 : 1, sel ? C_ACCENT2 : C_LINE, 16));
+
+        TextView dot = rounded(sel ? "\u25cf" : "\u25cb", 12,
+                sel ? C_ACCENT : C_TEXT2, false);
+        dot.setPadding(0, 0, dp(12), 0);
+        row.addView(dot);
+
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        TextView name = rounded(ENGINES[i][0], 14, sel ? C_ACCENT : C_TEXT, true);
+        TextView addr = rounded(host, 10, C_TEXT2, false);
+        addr.setPadding(0, dp(3), 0, 0);
+        col.addView(name);
+        col.addView(addr);
+        row.addView(col, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        if (sel) {
+            TextView badge = rounded("使用中", 9, 0xFFFFFFFF, true);
+            badge.setPadding(dp(8), dp(3), dp(8), dp(3));
+            badge.setBackground(round(C_ACCENT, 0, C_ACCENT, 10));
+            row.addView(badge, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        }
+
+        row.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 seName = ENGINES[i][0];
-                seUrl   = ENGINES[i][1];
+                seUrl  = ENGINES[i][1];
                 saveEngine();
                 updateEngineBtn();
-                toast("引擎已切换：" + seName);
+                toast("已切换到 " + seName);
                 d.dismiss();
             }
         });
+
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.setMargins(0, 0, 0, dp(4));
-        t.setLayoutParams(lp);
-        return t;
+        lp.setMargins(0, 0, 0, dp(8));
+        row.setLayoutParams(lp);
+        return row;
     }
 
     private void customEngine() {
@@ -348,29 +378,30 @@ public class BrowserActivity extends Activity {
 
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setBackground(box(C_BG, C_BLUE, 2));
-        panel.setPadding(dp(14), dp(14), dp(14), dp(14));
+        panel.setBackground(round(C_CARD, 0, C_CARD, 24));
+        panel.setPadding(dp(16), dp(18), dp(16), dp(14));
 
-        panel.addView(mono("PRTS://ENGINE-CUSTOM", 13, C_BLUE, true));
-        TextView sub = mono("用 %s 代替搜索关键词", 10, C_DIM, false);
-        sub.setPadding(0, dp(4), 0, dp(12));
+        panel.addView(rounded("自定义搜索引擎", 16, C_TEXT, true));
+        TextView sub = rounded("地址里用 %s 代替关键词", 11, C_TEXT2, false);
+        sub.setPadding(0, dp(4), 0, dp(14));
         panel.addView(sub);
 
-        panel.addView(label("NAME / 名称"));
+        panel.addView(label("名称"));
         final EditText eName = input(seName, InputType.TYPE_CLASS_TEXT);
         panel.addView(eName);
 
-        panel.addView(label("URL / 搜索地址"));
+        panel.addView(label("搜索地址"));
         final EditText eUrl = input(seUrl, InputType.TYPE_TEXT_VARIATION_URI);
         panel.addView(eUrl);
 
-        TextView eg = mono("例：https://www.baidu.com/s?wd=%s", 10, C_DIM, false);
-        eg.setPadding(0, dp(6), 0, dp(12));
+        TextView eg = rounded("例：https://www.baidu.com/s?wd=%s", 10, C_TEXT2, false);
+        eg.setPadding(dp(4), dp(8), 0, dp(14));
         panel.addView(eg);
 
-        TextView save = mono("  [ 保存 ]", 13, C_BLUE, true);
-        save.setPadding(dp(6), dp(10), dp(6), dp(10));
-        save.setBackground(box(C_FILL, C_BLUE, 1));
+        TextView save = rounded("保存", 14, 0xFFFFFFFF, true);
+        save.setGravity(Gravity.CENTER);
+        save.setPadding(dp(10), dp(14), dp(10), dp(14));
+        save.setBackground(round(C_ACCENT, 0, C_ACCENT, 16));
         save.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 String n = eName.getText().toString().trim();
@@ -383,65 +414,21 @@ public class BrowserActivity extends Activity {
                 seUrl  = u;
                 saveEngine();
                 updateEngineBtn();
-                toast("已保存自定义引擎：" + n);
+                toast("已保存：" + n);
                 d.dismiss();
             }
         });
         panel.addView(save);
 
-        TextView cancel = mono("  × 取消", 12, C_DIM, false);
-        cancel.setPadding(dp(6), dp(10), dp(6), dp(10));
+        TextView cancel = rounded("取消", 13, C_TEXT2, false);
+        cancel.setGravity(Gravity.CENTER);
+        cancel.setPadding(dp(10), dp(14), dp(10), dp(6));
         cancel.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { d.dismiss(); }
         });
         panel.addView(cancel);
 
         showPanel(d, panel);
-    }
-
-    // ---------- 对话框基建（全自绘，不用系统 Material 样式） ----------
-
-    private Dialog baseDialog() {
-        Dialog d = new Dialog(this);
-        d.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        return d;
-    }
-
-    private void showPanel(Dialog d, View panel) {
-        ScrollView sv = new ScrollView(this);
-        sv.setBackgroundColor(C_BG);
-        sv.addView(panel);
-        d.setContentView(sv);
-        d.show();
-        Window w = d.getWindow();
-        if (w != null) {
-            w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            int width = (int) (getResources().getDisplayMetrics().widthPixels * 0.92);
-            w.setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);
-        }
-    }
-
-    private TextView mono(String s, int sp, int color, boolean bold) {
-        TextView t = new TextView(this);
-        t.setText(s);
-        t.setTextColor(color);
-        t.setTextSize(sp);
-        t.setTypeface(Typeface.MONOSPACE, bold ? Typeface.BOLD : Typeface.NORMAL);
-        return t;
-    }
-
-    private TextView secLabel(String s) {
-        TextView t = mono(s, 11, C_DIM, true);
-        t.setPadding(dp(2), dp(12), 0, dp(6));
-        t.setLetterSpacing(0.1f);
-        return t;
-    }
-
-    private TextView label(String s) {
-        TextView t = mono(s, 10, C_DIM, true);
-        t.setPadding(0, dp(2), 0, dp(4));
-        t.setLetterSpacing(0.08f);
-        return t;
     }
 
     private void saveEngine() {
@@ -485,13 +472,13 @@ public class BrowserActivity extends Activity {
         runOnUiThread(new Runnable() {
             @Override public void run() {
                 stat.setText(scolded > 0
-                        ? "PRTS://BROWSER  已拦 " + blocked + "  劝返 " + scolded
-                        : "PRTS://BROWSER  已拦 " + blocked);
+                        ? "已拦截 " + blocked + "  ·  劝返 " + scolded
+                        : "已拦截 " + blocked);
             }
         });
     }
 
-    // ==================== 彩蛋页 ====================
+    // ==================== 彩蛋页（柔和风） ====================
 
     private String fakeCertPage(String url) {
         String host = url == null ? "unknown" : url;
@@ -505,65 +492,92 @@ public class BrowserActivity extends Activity {
         return "<!doctype html><html><head><meta charset=\"utf-8\">"
             + "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
             + "<style>"
-            + "body{background:#FFFFFF;color:#12308C;margin:0;padding:26px 20px;"
-            + "font-family:'Courier New',monospace}"
-            + "h1{font-size:19px;margin:14px 0 10px;letter-spacing:1px}"
-            + ".tag{display:inline-block;border:1px solid #12308C;padding:2px 8px;"
-            + "font-size:11px;letter-spacing:2px}"
-            + "p{font-size:13px;line-height:1.8;color:#3A4F86;margin:0 0 8px}"
-            + "code{color:#2E5BFF;font-size:12px}"
-            + ".box{border:1px solid #DCE4F5;background:#F2F5FC;padding:12px 14px;"
-            + "margin-top:14px}"
-            + ".err{color:#B00020;font-size:12px;letter-spacing:1px}"
-            + ".prts{color:#12308C;font-size:14px;font-weight:bold;margin:0}"
-            + ".sig{color:#7A8DB8;font-size:11px;margin:6px 0 0;text-align:right}"
-            + ".btn{display:inline-block;border:1px solid #12308C;color:#12308C;"
-            + "padding:8px 18px;margin:16px 8px 0 0;font-size:12px;letter-spacing:1px}"
+            + "*{box-sizing:border-box}"
+            + "body{background:#F4F7FE;color:#1F2A44;margin:0;padding:22px 18px;"
+            + "font-family:-apple-system,'Noto Sans SC',sans-serif}"
+            + ".card{background:#fff;border-radius:20px;padding:20px 18px;"
+            + "box-shadow:0 6px 18px rgba(61,123,255,.08);margin-bottom:14px}"
+            + ".ico{width:46px;height:46px;border-radius:14px;background:#EAF1FF;"
+            + "display:flex;align-items:center;justify-content:center;font-size:22px}"
+            + "h1{font-size:18px;margin:14px 0 8px;font-weight:600}"
+            + "p{font-size:13px;line-height:1.75;color:#5B6B87;margin:0 0 8px}"
+            + "code{color:#3D7BFF;font-size:12px;background:#EAF1FF;"
+            + "padding:2px 6px;border-radius:6px}"
+            + ".row{display:flex;justify-content:space-between;padding:7px 0;"
+            + "border-bottom:1px solid #EEF2FA;font-size:12px;color:#8093B0}"
+            + ".row:last-child{border-bottom:0}"
+            + ".err{color:#E23D5A;font-size:12px;font-weight:600}"
+            + ".prts{color:#3D7BFF;font-size:15px;font-weight:600;margin:0}"
+            + ".sig{color:#8093B0;font-size:11px;margin:8px 0 0;text-align:right}"
+            + ".btn{display:block;text-align:center;background:#3D7BFF;color:#fff;"
+            + "padding:13px;border-radius:14px;font-size:14px;text-decoration:none;"
+            + "margin-top:12px}"
+            + ".btn2{display:block;text-align:center;background:#EAF1FF;color:#3D7BFF;"
+            + "padding:13px;border-radius:14px;font-size:14px;text-decoration:none;"
+            + "margin-top:10px}"
             + "</style></head><body>"
-            + "<div class=\"tag\">PRTS://SECURE-LAYER</div>"
-            + "<h1>[ 连接不是私密连接 ]</h1>"
+            + "<div class=\"card\">"
+            + "<div class=\"ico\">\ud83d\udd12</div>"
+            + "<h1>连接不是私密连接</h1>"
             + "<p>攻击者可能会试图从 <code>" + host + "</code> 窃取您的信息"
             + "（例如：密码、通讯方式或信用卡）。</p>"
-            + "<div class=\"box\">"
-            + "<p class=\"err\">NET::ERR_CERT_AUTHORITY_INVALID</p>"
-            + "<p style=\"margin:8px 0 0\">ISSUER &nbsp;<code>PRTS-ROOT-CA</code><br>"
-            + "VALID &nbsp;<code>N/A</code><br>"
-            + "SUBJECT &nbsp;<code>" + host + "</code></p>"
             + "</div>"
-            + "<div class=\"box\">"
+            + "<div class=\"card\">"
+            + "<p class=\"err\">NET::ERR_CERT_AUTHORITY_INVALID</p>"
+            + "<div class=\"row\"><span>颁发者</span><span>PRTS-ROOT-CA</span></div>"
+            + "<div class=\"row\"><span>有效期</span><span>不适用</span></div>"
+            + "<div class=\"row\"><span>证书使用者</span><span>" + host + "</span></div>"
+            + "</div>"
+            + "<div class=\"card\">"
             + "<p class=\"prts\">博士，您今天的 325 计划还没有完成。</p>"
             + "<p class=\"sig\">—— 普瑞赛斯</p>"
             + "</div>"
             + "<a class=\"btn\" href=\"javascript:history.back()\">返回</a>"
-            + "<a class=\"btn\" href=\"javascript:location.reload()\">重试</a>"
+            + "<a class=\"btn2\" href=\"javascript:location.reload()\">重试</a>"
             + "</body></html>";
     }
 
     // ==================== 小工具 ====================
 
-    private TextView btn(String text, View.OnClickListener l) {
+    private LinearLayout rowWrap() {
+        LinearLayout l = new LinearLayout(this);
+        l.setOrientation(LinearLayout.VERTICAL);
+        return l;
+    }
+
+    private TextView roundBtn(String text, View.OnClickListener l) {
         TextView t = new TextView(this);
         t.setText(text);
-        t.setTextColor(C_BLUE);
+        t.setTextColor(C_ACCENT);
         t.setTextSize(15);
-        t.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         t.setGravity(Gravity.CENTER);
-        t.setPadding(dp(9), dp(6), dp(9), dp(6));
-        t.setBackground(box(0xFFFFFFFF, C_BOX, 1));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        t.setPadding(dp(4), dp(6), dp(4), dp(6));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(38), dp(38));
         lp.setMargins(dp(2), 0, dp(2), 0);
         t.setLayoutParams(lp);
+        t.setBackground(round(C_PAGE, 0, C_PAGE, 12));
         t.setOnClickListener(l);
         return t;
     }
 
-    private TextView smallLabel(String s) {
+    private TextView rounded(String s, int sp, int color, boolean bold) {
         TextView t = new TextView(this);
         t.setText(s);
-        t.setTextColor(C_BLUE);
-        t.setTextSize(11);
-        t.setTypeface(Typeface.MONOSPACE);
+        t.setTextColor(color);
+        t.setTextSize(sp);
+        t.setTypeface(Typeface.DEFAULT, bold ? Typeface.BOLD : Typeface.NORMAL);
+        return t;
+    }
+
+    private TextView secLabel(String s) {
+        TextView t = rounded(s, 11, C_TEXT2, true);
+        t.setPadding(dp(6), dp(6), 0, dp(8));
+        return t;
+    }
+
+    private TextView label(String s) {
+        TextView t = rounded(s, 11, C_TEXT2, true);
+        t.setPadding(dp(6), dp(4), 0, dp(6));
         return t;
     }
 
@@ -572,20 +586,44 @@ public class BrowserActivity extends Activity {
         e.setText(val);
         e.setSingleLine(true);
         e.setTextSize(13);
-        e.setTypeface(Typeface.MONOSPACE);
-        e.setTextColor(C_BLUE);
+        e.setTextColor(C_TEXT);
         e.setInputType(type);
-        e.setPadding(dp(6), dp(4), dp(6), dp(4));
-        e.setBackground(box(0xFFFFFFFF, C_BOX, 1));
+        e.setPadding(dp(14), dp(10), dp(14), dp(10));
+        e.setBackground(round(C_PAGE, 0, C_PAGE, 14));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, 0, 0, dp(8));
+        e.setLayoutParams(lp);
         return e;
     }
 
-    private GradientDrawable box(int fill, int stroke, int width) {
+    private GradientDrawable round(int fill, int strokeDp, int strokeColor, int radiusDp) {
         GradientDrawable g = new GradientDrawable();
         g.setColor(fill);
-        g.setStroke(dp(width), stroke);
-        g.setCornerRadius(dp(1));
+        g.setCornerRadius(dp(radiusDp));
+        if (strokeDp > 0) g.setStroke(Math.max(1, dp(strokeDp)), strokeColor);
         return g;
+    }
+
+    private Dialog baseDialog() {
+        Dialog d = new Dialog(this);
+        d.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        return d;
+    }
+
+    private void showPanel(Dialog d, View panel) {
+        ScrollView sv = new ScrollView(this);
+        sv.setBackgroundColor(Color.TRANSPARENT);
+        sv.setPadding(0, 0, 0, 0);
+        sv.addView(panel);
+        d.setContentView(sv);
+        d.show();
+        Window w = d.getWindow();
+        if (w != null) {
+            w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            int width = (int) (getResources().getDisplayMetrics().widthPixels * 0.92);
+            w.setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
     }
 
     private int dp(int v) {
