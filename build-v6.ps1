@@ -1,5 +1,5 @@
-﻿$ErrorActionPreference='Stop'
-$root = 'D:\Code\111\share\_phone\dnsapk'
+$ErrorActionPreference='Stop'
+$root = 'D:\Code\111\dnsapk'
 $bt   = 'C:\AndroidDev\sdk\build-tools\34.0.0'
 $jar  = 'C:\AndroidDev\sdk\platforms\android-34\android.jar'
 $jdk  = 'C:\AndroidDev\jdk-17\bin'

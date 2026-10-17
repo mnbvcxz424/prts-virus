@@ -221,7 +221,7 @@ adb shell pm grant com.cat.dnsswitch android.permission.WRITE_SECURE_SETTINGS
 
 ## 重新构建
 
-源码在 `D:\Code\111\share\_phone\dnsapk\`：
+源码在 `D:\Code\111\dnsapk\`：
 
 ```
 dnsapk\
@@ -240,7 +240,7 @@ dnsapk\
 
 改完代码后：
 ```
-powershell -ExecutionPolicy Bypass -File D:\Code\111\share\_phone\dnsapk\build-v6.ps1
+powershell -ExecutionPolicy Bypass -File D:\Code\111\dnsapk\build-v6.ps1
 ```
 
 **构建流程**（7 步，全用 Android SDK 命令行工具，不需要 Android Studio）：
