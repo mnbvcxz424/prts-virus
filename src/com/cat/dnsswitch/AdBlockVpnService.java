@@ -50,35 +50,69 @@ public class AdBlockVpnService extends VpnService implements Runnable {
     public static volatile String lastBlocked = "";
     private static final java.util.HashSet<String> seenDomains = new java.util.HashSet<>();
 
-    /** 内置规则：命中即拦（后缀匹配，所以 "doubleclick.net" 也拦 ad.doubleclick.net） */
-    private static final String[] RULES = {
-            "doubleclick.net", "googlesyndication.com", "googleadservices.com",
-            "google-analytics.com", "googletagmanager.com", "adservice.google.com",
-            "ads.youtube.com", "ad.doubleclick.net", "pagead2.googlesyndication.com",
-            "hm.baidu.com", "pos.baidu.com", "cpro.baidu.com", "union.baidu.com",
-            "tanx.com", "alimama.com", "mmstat.com", "simba.taobao.com",
-            "gdt.qq.com", "e.qq.com", "l.qq.com", "pingfore.qq.com",
-            "umeng.com", "umengcloud.com", "umeng.co", "cnzz.com",
-            "jpush.cn", "jiguang.cn", "getui.com", "igexin.com",
-            "pangolin.snssdk.com", "open.e.kuaishou.com", "adkwai.com",
-            "admaster.com.cn", "miaozhen.com", "irs01.com", "irs01.net",
-            "meituan.xinshuru.com", "oppomobile.com/ad", "adsmind.apdcdn.tc.qq.com",
-            "mi.gdt.qq.com", "ad.xiaomi.com", "ad.mi.com",
-            "applovin.com", "unityads.unity3d.com", "vungle.com",
-            "inmobi.com", "chartboost.com", "tapjoy.com", "ironsrc.com",
-            "criteo.com", "criteo.net", "moatads.com", "scorecardresearch.com",
-            "amazon-adsystem.com", "adnxs.com", "rubiconproject.com",
-            "pubmatic.com", "openx.net", "smartadserver.com",
-            "flurry.com", "appsflyer.com", "adjust.com", "branch.io",
-            "sensorsdata.cn", "growingio.com", "talkingdata.com",
-            "baidustatic.com/ad", "adview.cn", "domob.cn", "waps.cn"
-    };
-
     private Thread worker;
     private ParcelFileDescriptor tun;
     private DatagramSocket up;
 
     private static android.content.Context appCtx;
+
+    /** 分组开关缓存（5 秒） */
+    private static boolean[] groupsCache = null;
+    private static long groupsAt = 0;
+    /** 信任网络缓存（20 秒） */
+    private static boolean trustedCache = false;
+    private static long trustedAt = 0;
+
+    static boolean[] groups() {
+        long now = System.currentTimeMillis();
+        if (groupsCache != null && now - groupsAt < 5000) return groupsCache;
+        groupsAt = now;
+        boolean[] g = { true, true, true, true };
+        try {
+            android.content.SharedPreferences sp = appCtx.getSharedPreferences(
+                    "prts", android.content.Context.MODE_PRIVATE);
+            for (int i = 0; i < 4; i++) g[i] = sp.getBoolean(AdRules.GROUP_KEYS[i], true);
+        } catch (Exception ignored) {
+        }
+        groupsCache = g;
+        return g;
+    }
+
+    /** 当前 Wi-Fi 在「信任的网络」里吗？在的话暂停拦截 */
+    static boolean isTrustedNet() {
+        long now = System.currentTimeMillis();
+        if (now - trustedAt < 20000) return trustedCache;
+        trustedAt = now;
+        trustedCache = false;
+        try {
+            android.content.SharedPreferences sp = appCtx.getSharedPreferences(
+                    "prts", android.content.Context.MODE_PRIVATE);
+            if (!sp.getBoolean("trust_net", false)) return false;
+            String list = sp.getString("trust_ssids", "");
+            if (list == null || list.trim().isEmpty()) return false;
+            android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager)
+                    appCtx.getSystemService(android.content.Context.WIFI_SERVICE);
+            if (wm == null) return false;
+            android.net.wifi.WifiInfo wi = wm.getConnectionInfo();
+            if (wi == null) return false;
+            String ssid = wi.getSSID();
+            if (ssid == null) return false;
+            ssid = ssid.replace("\"", "");
+            for (String line : list.split("\n")) {
+                if (line.trim().equals(ssid)) { trustedCache = true; break; }
+            }
+        } catch (Exception ignored) {
+        }
+        return trustedCache;
+    }
+
+    /** 浏览器那边拦了一条，也记进总数 */
+    public static void countBrowserBlock() {
+        statBlocked++;
+        bumpBlocked();
+    }
+
+    static void resetGroupsCache() { groupsCache = null; groupsAt = 0; trustedAt = 0; }
     private static int pendingQ = 0, pendingB = 0;
 
     /** 查询数：攒 10 次写一次盘 */
@@ -207,7 +241,7 @@ public class AdBlockVpnService extends VpnService implements Runnable {
         if (domain == null) return;
         synchronized (seenDomains) { seenDomains.add(domain); }
 
-        if (isBlocked(domain)) {
+        if (!isTrustedNet() && AdRules.isBlocked(domain, groups())) {
             statBlocked++;
             bumpBlocked();
             lastBlocked = domain;
@@ -253,13 +287,6 @@ public class AdBlockVpnService extends VpnService implements Runnable {
         return null;
     }
 
-    private boolean isBlocked(String d) {
-        for (int i = 0; i < RULES.length; i++) {
-            String r = RULES[i];
-            if (d.equals(r) || d.endsWith("." + r)) return true;
-        }
-        return false;
-    }
 
     /** 合成 0.0.0.0 的 A 记录回应（失败返回 null） */
     private byte[] synthAnswer(byte[] q, int dnsOff, int dnsLen) {

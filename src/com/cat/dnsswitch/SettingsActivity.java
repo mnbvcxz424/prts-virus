@@ -155,6 +155,55 @@ public class SettingsActivity extends Activity {
                 ? "开了中文模式，界面上的英文标签会变成中文。随时可以切回来。"
                 : "Turn on Chinese mode if you cannot read the English labels.", C_DIM));
 
+        // ---------- 拦截过滤器 ----------
+        box.addView(section(L("// FILTERS", "// 过滤器")));
+        final android.content.SharedPreferences ps = getSharedPreferences("prts", MODE_PRIVATE);
+        for (int gi = 0; gi < 4; gi++) {
+            final String key = AdRules.GROUP_KEYS[gi];
+            final boolean on = ps.getBoolean(key, true);
+            box.addView(kv(AdRules.GROUP_NAMES[gi] + " · " + AdRules.group(gi).length,
+                    on ? L("ON", "开") : L("OFF", "关")));
+            btn(on ? ("> 关掉【" + AdRules.GROUP_NAMES[gi] + "】")
+                   : ("> 打开【" + AdRules.GROUP_NAMES[gi] + "】"),
+                    on ? C_DANGER : C_GREEN, new View.OnClickListener() {
+                        @Override public void onClick(View v) {
+                            ps.edit().putBoolean(key, !on).apply();
+                            AdBlockVpnService.resetGroupsCache();
+                            render();
+                        }
+                    });
+        }
+        box.addView(hint("关了哪一组，那类域名就不拦了 —— DNS 和内置浏览器同时生效。规则共 "
+                + AdRules.totalCount() + " 条。", C_DIM));
+
+        // ---------- 信任的网络 ----------
+        box.addView(section(L("// TRUSTED_NET", "// 信任的网络")));
+        final boolean trustOn = ps.getBoolean("trust_net", false);
+        final String trusted = ps.getString("trust_ssids", "");
+        box.addView(kv(L("PAUSE_ON_TRUST", "信任网络下暂停"), trustOn ? L("ON", "开") : L("OFF", "关")));
+        box.addView(kv(L("TRUSTED_LIST", "已信任"), trusted.trim().isEmpty()
+                ? L("EMPTY", "（空）") : trusted.replace("\n", " / ")));
+        btn("> 把当前 Wi-Fi 加进信任列表", C_GREEN_D, new View.OnClickListener() {
+            @Override public void onClick(View v) { addCurrentWifi(); }
+        });
+        btn(trustOn ? "> 关闭信任网络" : "> 打开信任网络",
+                trustOn ? C_DANGER : C_GREEN, new View.OnClickListener() {
+                    @Override public void onClick(View v) {
+                        ps.edit().putBoolean("trust_net", !trustOn).apply();
+                        AdBlockVpnService.resetGroupsCache();
+                        render();
+                    }
+                });
+        btn("> 清空信任列表", C_DIM, new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                ps.edit().putString("trust_ssids", "").apply();
+                AdBlockVpnService.resetGroupsCache();
+                render();
+            }
+        });
+        box.addView(hint("在信任的 Wi-Fi 上（比如家里）暂停拦截。读 Wi-Fi 名字需要定位权限，"
+                + "Android 的限制。", C_DIM));
+
         // ---------- ROOT ----------
         box.addView(section("// ROOT"));
         box.addView(kv(L("STATUS", "状态"), L("NOT_AVAILABLE", "不可用")));
@@ -295,6 +344,57 @@ public class SettingsActivity extends Activity {
         return getSharedPreferences("prts", MODE_PRIVATE).getBoolean("cn", false);
     }
     private String L(String en, String zh) { return isCn() ? zh : en; }
+
+    // ==================== 信任的网络 ====================
+
+    private String currentSsid() {
+        try {
+            android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager)
+                    getApplicationContext().getSystemService(WIFI_SERVICE);
+            if (wm == null) return "";
+            android.net.wifi.WifiInfo wi = wm.getConnectionInfo();
+            if (wi == null) return "";
+            String s = wi.getSSID();
+            if (s == null) return "";
+            s = s.replace("\"", "");
+            return s.equals("<unknown ssid>") ? "" : s;
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private void addCurrentWifi() {
+        if (android.os.Build.VERSION.SDK_INT >= 23
+                && checkSelfPermission("android.permission.ACCESS_FINE_LOCATION")
+                   != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            toast("读 Wi-Fi 名字要定位权限，允许一下再点");
+            requestPermissions(new String[]{"android.permission.ACCESS_FINE_LOCATION"}, 1004);
+            return;
+        }
+        String ssid = currentSsid();
+        if (ssid.isEmpty()) {
+            toast("读不到当前 Wi-Fi（要连着 Wi-Fi，且定位开关打开）");
+            return;
+        }
+        android.content.SharedPreferences ps = getSharedPreferences("prts", MODE_PRIVATE);
+        String list = ps.getString("trust_ssids", "");
+        for (String line : list.split("\n")) {
+            if (line.trim().equals(ssid)) { toast("已经在列表里了：" + ssid); return; }
+        }
+        ps.edit().putString("trust_ssids",
+                list.trim().isEmpty() ? ssid : list + "\n" + ssid).apply();
+        AdBlockVpnService.resetGroupsCache();
+        toast("已加入信任：" + ssid);
+        render();
+    }
+
+    @Override public void onRequestPermissionsResult(int rc, String[] p, int[] r) {
+        super.onRequestPermissionsResult(rc, p, r);
+        if (rc == 1004 && r.length > 0
+                && r[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            addCurrentWifi();
+        }
+    }
 
     private TextView section(String s) {
         TextView t = tv(s, 11, C_GREEN_D, false);

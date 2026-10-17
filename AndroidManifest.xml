@@ -1,14 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.cat.dnsswitch"
-    android:versionCode="19"
-    android:versionName="3.1.1">
+    android:versionCode="20"
+    android:versionName="3.2.0">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="33" />
 
     <!-- 修改系统设置（私人 DNS）需要此权限，只能通过 adb 一次性授权 -->
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -53,6 +56,12 @@
         <meta-data
             android:name="moe.shizuku.client.V3_SUPPORT"
             android:value="true" />
+
+        <activity
+            android:name=".BrowserActivity"
+            android:exported="false"
+            android:label="普瑞赛斯浏览器"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
 
         <!-- 每天 20:00 的汇总提醒 -->
         <receiver

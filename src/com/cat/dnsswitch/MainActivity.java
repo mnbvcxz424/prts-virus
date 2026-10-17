@@ -1522,6 +1522,11 @@ public class MainActivity extends Activity {
         btnFull("> 现在看今日汇报", C_GREEN, new View.OnClickListener() {
             @Override public void onClick(View v) { triggerDailyReport(); }
         });
+        btnFull("> 打开内置浏览器（带拦截）", C_GREEN, new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                startActivity(new android.content.Intent(MainActivity.this, BrowserActivity.class));
+            }
+        });
         hint("只接管 DNS 查询，其他流量不进 VPN —— 不耗电、不影响别的 App，也不和别的 VPN 抢。\n"
              + "第一次开启系统会弹一次授权，点允许就行。", C_DIM);
         startVpnTick();
