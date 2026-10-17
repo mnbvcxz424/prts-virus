@@ -4,7 +4,7 @@
 
 **Android 私人 DNS 广告拦截 · Shizuku 命令通道 · 终端风格界面**
 
-`v3.2.2` · `versionCode 22` · Android 7.0+ · 205 KB
+`v3.2.3` · `versionCode 23` · Android 7.0+ · 209 KB
 
 [**⬇ 下载 APK**](https://github.com/mnbvcxz424/prts-virus/releases/latest) &nbsp;·&nbsp; [使用说明](#使用说明) &nbsp;·&nbsp; [常见问题](#常见问题)
 
@@ -33,7 +33,7 @@
 | **拦截统计** | 记录探测次数和累计拦截条数，一眼看出拦了多少 |
 | **广告 SDK 扫描** | 走 Shizuku 扫已装 App 里嵌的推广 SDK（穿山甲 / 优量汇 / 友盟 / 极光 / OPPO 推广等） |
 | **本地拦截（VPN）** | 本地 VpnService 拦 DNS —— **只接管 DNS，其他流量不进 VPN**；带真实查询数/拦截数/拦截率统计 |
-| **内置浏览器** | 自带 WebView 浏览器，`shouldInterceptRequest` 掐广告子资源，拦一条记一条 |
+| **内置浏览器** | 白底蓝字信息终端风格，11 个搜索引擎 + 自定义，`shouldInterceptRequest` 掐广告子资源 |
 | **过滤器** | 规则分四组（广告 / 统计追踪 / 推广 SDK / 恶意），可单独关 |
 | **信任的网络** | 在信任的 Wi-Fi 上暂停拦截（家里 / 公司） |
 | **每日汇报** | 每天 **20:00** 弹一条通知：今天挡了多少条广告、累计多少条 |
