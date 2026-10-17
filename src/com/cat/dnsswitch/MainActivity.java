@@ -112,6 +112,8 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         mono = Typeface.MONOSPACE;
         sp = getSharedPreferences(PREF, Context.MODE_PRIVATE);
+        scheduleDailyReport();
+        ensureNotificationPermission();
         setContentView(buildUi());
         ShizukuBridge.init(this);
         ShizukuBridge.addListener(shizukuCb);
@@ -627,6 +629,54 @@ public class MainActivity extends Activity {
         if (vpnTicking || !AdBlockVpnService.running) return;
         vpnTicking = true;
         ui.postDelayed(vpnTick, 2000);
+    }
+
+    /** 排一个每天 20:00 的汇总提醒 */
+    private void scheduleDailyReport() {
+        try {
+            java.util.Calendar cal = java.util.Calendar.getInstance();
+            cal.set(java.util.Calendar.HOUR_OF_DAY, 20);
+            cal.set(java.util.Calendar.MINUTE, 0);
+            cal.set(java.util.Calendar.SECOND, 0);
+            cal.set(java.util.Calendar.MILLISECOND, 0);
+            if (cal.getTimeInMillis() <= System.currentTimeMillis()) {
+                cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+            }
+            android.app.AlarmManager am =
+                    (android.app.AlarmManager) getSystemService(ALARM_SERVICE);
+            if (am == null) return;
+            android.app.PendingIntent pi = android.app.PendingIntent.getBroadcast(
+                    this, 3001,
+                    new android.content.Intent(this, DailyReportReceiver.class),
+                    android.os.Build.VERSION.SDK_INT >= 23
+                            ? android.app.PendingIntent.FLAG_IMMUTABLE : 0);
+            am.setInexactRepeating(android.app.AlarmManager.RTC_WAKEUP,
+                    cal.getTimeInMillis(),
+                    android.app.AlarmManager.INTERVAL_DAY, pi);
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** Android 13+ 必须拿到通知权限，否则 notify() 静默失败 */
+    private void ensureNotificationPermission() {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= 33
+                    && checkSelfPermission("android.permission.POST_NOTIFICATIONS")
+                       != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 1003);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** 立刻弹一次今日汇报（测试用，也是"想看就看"的入口） */
+    private void triggerDailyReport() {
+        try {
+            sendBroadcast(new android.content.Intent(this, DailyReportReceiver.class));
+            toast("汇报已发出，看通知栏");
+        } catch (Exception e) {
+            toast("发不出去：" + e.getMessage());
+        }
     }
 
     private void vpnToggle() {
@@ -1445,6 +1495,14 @@ public class MainActivity extends Activity {
         contentBox.addView(kv(L("VPN_BLOCKED", "已拦截"), String.valueOf(vb)));
         contentBox.addView(kv(L("VPN_DOMAINS", "唯一域名"),
                 String.valueOf(AdBlockVpnService.uniqueDomains())));
+        android.content.SharedPreferences st = getSharedPreferences("prts_stats", MODE_PRIVATE);
+        String todayKey = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                .format(new java.util.Date());
+        boolean sameDay = todayKey.equals(st.getString("day", ""));
+        int dayBlocked = sameDay ? st.getInt("day_blocked", 0) : 0;
+        int totalBlocked = st.getInt("total_blocked", 0);
+        contentBox.addView(kv(L("VPN_TODAY", "今日拦截"), String.valueOf(dayBlocked)));
+        contentBox.addView(kv(L("VPN_TOTAL", "累计拦截"), String.valueOf(totalBlocked)));
         contentBox.addView(kv(L("VPN_RATE", "拦截率"),
                 vq == 0 ? "—" : String.format(java.util.Locale.US, "%.1f%%", 100.0 * vb / vq)));
         if (AdBlockVpnService.lastBlocked != null && !AdBlockVpnService.lastBlocked.isEmpty()) {
@@ -1460,6 +1518,9 @@ public class MainActivity extends Activity {
                 addRunLog(now() + "  VPN       →  统计已清空");
                 renderContent();
             }
+        });
+        btnFull("> 现在看今日汇报", C_GREEN, new View.OnClickListener() {
+            @Override public void onClick(View v) { triggerDailyReport(); }
         });
         hint("只接管 DNS 查询，其他流量不进 VPN —— 不耗电、不影响别的 App，也不和别的 VPN 抢。\n"
              + "第一次开启系统会弹一次授权，点允许就行。", C_DIM);

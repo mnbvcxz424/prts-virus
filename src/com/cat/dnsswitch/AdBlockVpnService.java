@@ -78,8 +78,49 @@ public class AdBlockVpnService extends VpnService implements Runnable {
     private ParcelFileDescriptor tun;
     private DatagramSocket up;
 
+    private static android.content.Context appCtx;
+    private static int pendingQ = 0, pendingB = 0;
+
+    /** 查询数：攒 10 次写一次盘 */
+    private static void bumpQuery() {
+        pendingQ++;
+        if (pendingQ >= 10) flushStats();
+    }
+
+    /** 拦截数：攒 3 次写一次盘 */
+    private static void bumpBlocked() {
+        pendingB++;
+        if (pendingB >= 3) flushStats();
+    }
+
+    /** 把攒着的今日/累计数写进 SharedPreferences（跨天自动归零今日） */
+    static void flushStats() {
+        android.content.Context c = appCtx;
+        int dq = pendingQ, db = pendingB;
+        pendingQ = 0; pendingB = 0;
+        if (c == null || (dq == 0 && db == 0)) return;
+        try {
+            android.content.SharedPreferences sp =
+                    c.getSharedPreferences("prts_stats", android.content.Context.MODE_PRIVATE);
+            String today = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                    .format(new java.util.Date());
+            boolean sameDay = today.equals(sp.getString("day", ""));
+            int dday   = sameDay ? sp.getInt("day_blocked", 0) : 0;
+            int dquery = sameDay ? sp.getInt("day_queries", 0) : 0;
+            int total  = sp.getInt("total_blocked", 0);
+            sp.edit()
+              .putString("day", today)
+              .putInt("day_blocked", dday + db)
+              .putInt("day_queries", dquery + dq)
+              .putInt("total_blocked", total + db)
+              .apply();
+        } catch (Exception ignored) {
+        }
+    }
+
     @Override public void onCreate() {
         super.onCreate();
+        appCtx = getApplicationContext();
         createChannel();
     }
 
@@ -105,6 +146,7 @@ public class AdBlockVpnService extends VpnService implements Runnable {
 
     @Override public void onDestroy() {
         running = false;
+        flushStats();
         try { if (tun != null) tun.close(); } catch (Exception ignored) {}
         try { if (up != null) up.close(); } catch (Exception ignored) {}
         tun = null; up = null;
@@ -161,11 +203,13 @@ public class AdBlockVpnService extends VpnService implements Runnable {
 
         String domain = parseQName(buf, dnsOff, dnsLen);
         statQueries++;
+        bumpQuery();
         if (domain == null) return;
         synchronized (seenDomains) { seenDomains.add(domain); }
 
         if (isBlocked(domain)) {
             statBlocked++;
+            bumpBlocked();
             lastBlocked = domain;
             byte[] resp = synthAnswer(buf, dnsOff, dnsLen);
             if (resp != null) writeBack(buf, ihl, len, resp, out);

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.cat.dnsswitch"
-    android:versionCode="18"
-    android:versionName="3.1">
+    android:versionCode="19"
+    android:versionName="3.1.1">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="33" />
 
@@ -11,6 +11,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
 
     <queries>
@@ -52,6 +53,11 @@
         <meta-data
             android:name="moe.shizuku.client.V3_SUPPORT"
             android:value="true" />
+
+        <!-- 每天 20:00 的汇总提醒 -->
+        <receiver
+            android:name=".DailyReportReceiver"
+            android:exported="false" />
 
         <!-- 本地广告拦截：只接管 DNS 的 VpnService -->
         <service
