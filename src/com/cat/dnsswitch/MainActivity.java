@@ -88,7 +88,7 @@ public class MainActivity extends Activity {
     private TextView tvDetail;
     private Button btnToggle;
     private LinearLayout tabBar;
-    private TextView tvTabState, tvTabRun, tvTabBlock, tvTabApps, tvTabSys;
+    private TextView tvTabState, tvTabRun, tvTabBlock, tvTabApps, tvTabSys, tvTabAmiya;
     private String dnsPath = "direct";
     private ScrollView svContent;
     private LinearLayout contentBox;
@@ -383,11 +383,13 @@ public class MainActivity extends Activity {
         tvTabBlock = tabBtn("[BLK]", 2);
         tvTabApps  = tabBtn("[APP]", 3);
         tvTabSys   = tabBtn("[SYS]", 4);
+        tvTabAmiya = tabBtn("[\u963f\u7c73\u5a05]", 5);
         tabBar.addView(tvTabState);
         tabBar.addView(tvTabRun);
         tabBar.addView(tvTabBlock);
         tabBar.addView(tvTabApps);
         tabBar.addView(tvTabSys);
+        tabBar.addView(tvTabAmiya);
 
         hs.addView(tabBar);
         root.addView(hs);
@@ -432,7 +434,7 @@ public class MainActivity extends Activity {
     }
 
     private void paintTabs() {
-        TextView[] tabs = { tvTabState, tvTabRun, tvTabBlock, tvTabApps, tvTabSys };
+        TextView[] tabs = { tvTabState, tvTabRun, tvTabBlock, tvTabApps, tvTabSys, tvTabAmiya };
         for (int i = 0; i < tabs.length; i++) {
             if (tabs[i] == null) continue;
             boolean on = (i == curTab);
@@ -448,7 +450,70 @@ public class MainActivity extends Activity {
         else if (curTab == 1) renderLogTab("run_log", "RUN_LOG", "// 没有运行记录");
         else if (curTab == 2) renderLogTab("block_log", "BLOCK_LOG", "// 没有拦截记录，点下方按钮探测");
         else if (curTab == 3) renderAppsTab();
+        else if (curTab == 5) renderAmiya();
         else renderSysTab();
+    }
+
+    // ---------- Tab 5：阿米娅 ----------
+    private int todayBlocked() {
+        try {
+            android.content.SharedPreferences st = getSharedPreferences("prts_stats", MODE_PRIVATE);
+            String key = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                    .format(new java.util.Date());
+            if (key.equals(st.getString("day", ""))) return st.getInt("day_blocked", 0);
+        } catch (Exception ignored) {
+        }
+        return 0;
+    }
+
+    private void renderAmiya() {
+        int today = todayBlocked();
+        int total = 0;
+        try {
+            total = getSharedPreferences("prts_stats", MODE_PRIVATE).getInt("total_blocked", 0);
+        } catch (Exception ignored) {
+        }
+
+        LinearLayout wrap = new LinearLayout(this);
+        wrap.setOrientation(LinearLayout.VERTICAL);
+        wrap.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+        wrap.setPadding(0, dp(6), 0, 0);
+
+        android.widget.ImageView img = new android.widget.ImageView(this);
+        img.setImageResource(R.drawable.amiya);
+        img.setAdjustViewBounds(true);
+        img.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+        LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(dp(230), dp(230));
+        ilp.setMargins(0, dp(4), 0, dp(16));
+        img.setLayoutParams(ilp);
+        wrap.addView(img);
+
+        TextView cap = tv("博士，我今天已经吃了 " + today + " 个广告。", 16, C_GREEN, true);
+        cap.setGravity(android.view.Gravity.CENTER);
+        wrap.addView(cap);
+
+        TextView cap2 = tv(L("// AMIYA  ·  STILL HUNGRY", "// 阿米娅  ·  还没吃饱"), 10, C_DIM, false);
+        cap2.setGravity(android.view.Gravity.CENTER);
+        cap2.setPadding(0, dp(8), 0, dp(14));
+        wrap.addView(cap2);
+
+        contentBox.addView(wrap);
+
+        contentBox.addView(divider());
+        contentBox.addView(kv(L("TODAY_EATEN", "今日吃掉"), today + L(" ADS", " 个广告")));
+        contentBox.addView(kv(L("TOTAL_EATEN", "累计吃掉"), total + L(" ADS", " 个广告")));
+        contentBox.addView(kv(L("MEAL_TIME", "结算时间"), L("20:00 DAILY", "每天 20:00")));
+
+        btnFull("> " + L("FEED HER MORE", "再喂她一口（去探测拦截）"), C_GREEN,
+                new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                addRunLog(now() + "  PROBE   →  阿米娅讨饭");
+                switchTab(0);
+                probe();
+            }
+        });
+        hint(L("She eats blocked ad requests. The 20:00 report is her dinner bell.",
+                "她吃的是被拦下来的广告请求。晚上八点的汇报是她的开饭铃。"), C_DIM);
     }
 
     // ---------- 中央控制台（快捷入口墙） ----------
