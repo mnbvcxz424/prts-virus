@@ -51,11 +51,11 @@ public class SosActivity extends Activity {
 
     private static final String PREF = "prts";
 
-    /** 极高威胁：进程名里带这些字样的 */
+    /** 极高威胁：进程名里带这些字样的（只放明确的推广 SDK 特征，别放 tracker 这种泛词） */
     private static final String[] SUSPICIOUS = {
             "mobads", "opos", "bytedance", "pangolin", "csj", "gdt", "umeng",
             "jpush", "jiguang", "getui", "kwad", "toutiao", "adservice",
-            "adsdk", "ad_sdk", "promote", "tracker", "beacon", "daemon.push"
+            "adsdk", "ad_sdk", "promote", "minigame.ads"
     };
 
     private static class Proc {
@@ -361,7 +361,15 @@ public class SosActivity extends Activity {
             // 被隐藏了却还活着 —— 这是最该处理的
             boolean revived = hidden.contains(p.pkg);
 
-            if (suspicious || revived) {
+            // 系统/厂商核心进程绝不判极高，停它们会把手机搞坏
+            boolean systemish = user.equals("system") || user.equals("root")
+                    || lower.startsWith("vendor.")
+                    || lower.startsWith("android.")
+                    || lower.startsWith("com.android.");
+
+            if (revived) {
+                p.level = 0;
+            } else if (suspicious && !systemish) {
                 p.level = 0;
             } else if (userPkgs.contains(p.pkg) && !p.pkg.equals(self)) {
                 p.level = 1;
