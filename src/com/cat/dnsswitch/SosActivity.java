@@ -153,6 +153,24 @@ public class SosActivity extends Activity {
         box.addView(ver);
         box.addView(divider());
 
+        // ---- SOS 硬件快捷键 ----
+        TextView sc = tv("快捷键   音量+ 连按三次  →  直接进这里", 12, C_WARN, true);
+        sc.setPadding(0, dp(12), 0, dp(2));
+        box.addView(sc);
+        boolean a11y = false;
+        try {
+            String s = android.provider.Settings.Secure.getString(getContentResolver(),
+                    android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+            a11y = s != null && s.contains(getPackageName());
+        } catch (Exception ignored) {
+        }
+        box.addView(hint(a11y
+                ? "无障碍服务已开启，快捷键可用。单按、连按两次照旧调音量。"
+                : "现在无障碍服务没开，快捷键不生效。\n"
+                  + "去 系统设置 → 无障碍 → 已下载的服务 → 普瑞赛斯病毒 打开即可。", 
+                a11y ? C_GREEN_D : C_DANGER));
+        box.addView(divider());
+
         // ---------- 威胁扫描 ----------
         box.addView(section("THREAT_SCAN  ·  威胁分析"));
         int hi = 0, mid = 0, low = 0;

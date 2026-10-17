@@ -1,14 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   猫猫去广告 - 无障碍服务配置
-  只监听窗口切换事件，不读取任何窗口内容
+  1. 只监听窗口切换事件，不读取任何窗口内容
+  2. 额外申请「过滤按键」权限：用来做 SOS 紧急快捷键（音量+ 连按三次）
+     按键只在内存里数次数，不记录、不上传任何内容
 -->
 <accessibility-service
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/a11y_desc"
     android:accessibilityEventTypes="typeWindowStateChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
-    android:accessibilityFlags="flagDefault"
+    android:accessibilityFlags="flagDefault|flagRequestFilterKeyEvents"
     android:canRetrieveWindowContent="false"
+    android:canRequestFilterKeyEvents="true"
     android:notificationTimeout="100"
     android:settingsActivity="com.cat.dnsswitch.MainActivity" />

@@ -31,6 +31,45 @@ public class AppRuleService extends AccessibilityService {
     private long lastAt = 0;
     private String appliedPkg = "";
 
+    // ---- SOS 紧急快捷键 ----
+    private long lastVolAt = 0;
+    private int volHits = 0;
+    private static final long VOL_WINDOW_MS = 1200;
+
+    /**
+     * 全局按键：音量+ 连按三次（1.2 秒内）触发 SOS。
+     * 单次和两次照旧调音量，不打扰。
+     */
+    @Override protected boolean onKeyEvent(android.view.KeyEvent e) {
+        if (e == null) return false;
+        if (e.getKeyCode() != android.view.KeyEvent.KEYCODE_VOLUME_UP) return false;
+        if (e.getAction() != android.view.KeyEvent.ACTION_DOWN) return false;
+        if (e.getRepeatCount() > 0) return false;   // 长按的自动重复不算
+
+        long now = System.currentTimeMillis();
+        if (now - lastVolAt > VOL_WINDOW_MS) volHits = 0;
+        lastVolAt = now;
+        volHits++;
+        if (volHits >= 3) {
+            volHits = 0;
+            triggerSos();
+            return true;      // 第三次吃掉，不再调音量
+        }
+        return false;
+    }
+
+    private void triggerSos() {
+        try {
+            android.widget.Toast.makeText(this, "SOS · 罗德岛全舰防御",
+                    android.widget.Toast.LENGTH_SHORT).show();
+            android.content.Intent i = new android.content.Intent(this, SosActivity.class);
+            i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                    | android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(i);
+        } catch (Exception ignored) {
+        }
+    }
+
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
         if (event == null) return;
