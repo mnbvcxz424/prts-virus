@@ -39,7 +39,7 @@ Write-Host "[2/7] aapt2 link"
 & "$bt\aapt2.exe" link -o "$out\base.apk" -I $jar --manifest "$root\AndroidManifest.xml" `
     "$out\res.zip" --java "$out\gen" `
     --min-sdk-version 24 --target-sdk-version 33 `
-    --version-code 21 --version-name "3.2.1"
+    --version-code 22 --version-name "3.2.2"
 if ($LASTEXITCODE -ne 0) { throw "aapt2 link failed" }
 
 Write-Host "[3/7] javac"
@@ -52,8 +52,12 @@ if ($LASTEXITCODE -ne 0) { throw "javac failed" }
 
 Write-Host "[4/7] d8"
 $cls = (Get-ChildItem "$out\classes" -Recurse -Filter *.class | ForEach-Object { $_.FullName })
-& "$bt\d8.bat" --release --min-api 24 --lib $jar --output "$out\dex" `
-    $cls $dexLibs 2>&1 | Out-String | Write-Host
+# 类一多，d8.bat 的命令行会超过 cmd 的 8191 字符上限；先打成 jar 再喂给 d8
+$clsJar = "$out\classes-all.jar"
+if (Test-Path $clsJar) { Remove-Item $clsJar -Force }
+& "$jdk\jar.exe" cf $clsJar -C "$out\classes" . 2>&1 | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "jar failed" }
+& "$bt\d8.bat" --release --min-api 24 --lib $jar --output "$out\dex" $clsJar $dexLibs 2>&1 | Out-String | Write-Host
 if ($LASTEXITCODE -ne 0) { throw "d8 failed" }
 
 Write-Host "[5/7] pack classes.dex"

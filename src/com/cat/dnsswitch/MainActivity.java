@@ -282,6 +282,21 @@ public class MainActivity extends Activity {
         btnSet.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { openSettings(); }
         });
+
+        TextView btnGrid = tv("\u25a6", 22, C_GREEN, true);
+        btnGrid.setPadding(dp(10), dp(6), dp(10), dp(6));
+        btnGrid.setBackground(makeBox(C_BG, C_GREEN, 2, 2));
+        LinearLayout.LayoutParams glp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        glp.setMargins(0, 0, dp(8), 0);
+        btnGrid.setLayoutParams(glp);
+        btnGrid.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                launcherMode = !launcherMode;
+                renderContent();
+            }
+        });
+        topBar.addView(btnGrid);
         topBar.addView(btnSet);
 
         root.addView(topBar);
@@ -403,11 +418,128 @@ public class MainActivity extends Activity {
 
     private void renderContent() {
         contentBox.removeAllViews();
+        if (launcherMode) { renderLauncher(); return; }
         if (curTab == 0) renderStateTab();
         else if (curTab == 1) renderLogTab("run_log", "RUN_LOG", "// 没有运行记录");
         else if (curTab == 2) renderLogTab("block_log", "BLOCK_LOG", "// 没有拦截记录，点下方按钮探测");
         else if (curTab == 3) renderAppsTab();
         else renderSysTab();
+    }
+
+    // ---------- 中央控制台（快捷入口墙） ----------
+    private boolean launcherMode = false;
+
+    private void renderLauncher() {
+        boolean dnsOn = isOn();
+        boolean vpnOn = AdBlockVpnService.running;
+        android.content.SharedPreferences ps = getSharedPreferences("prts", MODE_PRIVATE);
+        boolean trustOn = ps.getBoolean("trust_net", false);
+
+        TextView head = tv("// CONSOLE  ·  " + L("ALL FUNCTIONS", "全部功能"), 12, C_GREEN, true);
+        head.setPadding(0, 0, 0, dp(8));
+        contentBox.addView(head);
+
+        addCardRow(
+            card("\u26e8", "DNS 拦截", dnsOn ? L("ON", "已开启") : L("OFF", "已关闭"),
+                    dnsOn ? C_GREEN : C_DIM, new Runnable() {
+                @Override public void run() { launcherMode = false; toggle(); ui.postDelayed(new Runnable() {
+                    @Override public void run() { launcherMode = true; renderContent(); }
+                }, 1500); }
+            }),
+            card("\u25c8", "本地拦截", vpnOn ? L("RUNNING", "运行中") : L("STOPPED", "未开启"),
+                    vpnOn ? C_GREEN : C_DIM, new Runnable() {
+                @Override public void run() { vpnToggle(); ui.postDelayed(new Runnable() {
+                    @Override public void run() { renderContent(); }
+                }, 1800); }
+            })
+        );
+        addCardRow(
+            card("\u25a4", "内置浏览器", L("AD BLOCK", "带广告拦截"), C_GREEN, new Runnable() {
+                @Override public void run() {
+                    startActivity(new android.content.Intent(MainActivity.this, BrowserActivity.class));
+                }
+            }),
+            card("\u25cd", "过滤器", AdRules.totalCount() + L(" RULES", " 条规则"), C_GREEN, new Runnable() {
+                @Override public void run() { openSettings(); }
+            })
+        );
+        addCardRow(
+            card("\u2302", "信任网络", trustOn ? L("ON", "已开启") : L("OFF", "未开启"),
+                    trustOn ? C_GREEN : C_DIM, new Runnable() {
+                @Override public void run() { openSettings(); }
+            }),
+            card("\u2315", "SDK 扫描", L("FIND AD SDK", "扫推广 SDK"), C_GREEN, new Runnable() {
+                @Override public void run() { launcherMode = false; scanSdk(); }
+            })
+        );
+        addCardRow(
+            card("\u2261", "运行日志", countLines("run_log") + L(" LINES", " 行"), C_GREEN, new Runnable() {
+                @Override public void run() { launcherMode = false; switchTab(1); }
+            }),
+            card("\u2298", "拦截日志", countLines("block_log") + L(" LINES", " 行"), C_GREEN, new Runnable() {
+                @Override public void run() { launcherMode = false; switchTab(2); }
+            })
+        );
+        addCardRow(
+            card("\u25a3", "应用规则", L("PER APP", "按 App 设置"), C_GREEN, new Runnable() {
+                @Override public void run() { launcherMode = false; switchTab(3); }
+            }),
+            card("\u25a5", "系统面板", L("SHIZUKU", "Shizuku / 统计"), C_GREEN, new Runnable() {
+                @Override public void run() { launcherMode = false; switchTab(4); }
+            })
+        );
+        addCardRow(
+            card("\u25f7", "每日汇报", L("20:00 DAILY", "每天 20:00"), C_GREEN, new Runnable() {
+                @Override public void run() { triggerDailyReport(); }
+            }),
+            card("\u2699", "设置", L("SETTINGS", "语言 / 过滤器"), C_GREEN, new Runnable() {
+                @Override public void run() { openSettings(); }
+            })
+        );
+
+        btnFull("> 收起来，回到当前页面", C_GREEN_D, new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                launcherMode = false;
+                renderContent();
+            }
+        });
+        hint(L("Tap a card to jump. Tap the grid button again to close.",
+                "点卡片直接跳过去；再点一下右上角的 ▦ 也能收起。"), C_DIM);
+    }
+
+    private void addCardRow(View a, View b) {
+        LinearLayout r = new LinearLayout(this);
+        r.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams lp1 = new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.MATCH_PARENT, 1f);
+        lp1.setMargins(0, 0, dp(5), dp(10));
+        LinearLayout.LayoutParams lp2 = new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.MATCH_PARENT, 1f);
+        lp2.setMargins(dp(5), 0, 0, dp(10));
+        r.addView(a, lp1);
+        r.addView(b, lp2);
+        contentBox.addView(r);
+    }
+
+    private View card(String glyph, String name, String status, int color, final Runnable act) {
+        LinearLayout c = new LinearLayout(this);
+        c.setOrientation(LinearLayout.VERTICAL);
+        c.setPadding(dp(12), dp(12), dp(12), dp(12));
+        c.setBackground(makeBox(C_GREEN_X, C_GREEN_D, 1, 2));
+        TextView g = tv(glyph, 26, color, true);
+        TextView n = tv(name, 14, C_GREEN, true);
+        n.setPadding(0, dp(8), 0, 0);
+        TextView s = tv(status, 10, C_DIM, false);
+        s.setPadding(0, dp(3), 0, 0);
+        c.addView(g);
+        c.addView(n);
+        c.addView(s);
+        c.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                try { act.run(); } catch (Exception e) { toast("打不开：" + e.getMessage()); }
+            }
+        });
+        return c;
     }
 
     // ---------- Tab 0：状态 ----------
