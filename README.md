@@ -4,7 +4,7 @@
 
 **Android 私人 DNS 广告拦截 · Shizuku 命令通道 · 终端风格界面**
 
-`v2.8` · `versionCode 14` · Android 7.0+ · 180 KB
+`v2.8.1` · `versionCode 15` · Android 7.0+ · 180 KB
 
 [**⬇ 下载 APK**](https://github.com/mnbvcxz424/prts-virus/releases/latest) &nbsp;·&nbsp; [使用说明](#使用说明) &nbsp;·&nbsp; [常见问题](#常见问题)
 

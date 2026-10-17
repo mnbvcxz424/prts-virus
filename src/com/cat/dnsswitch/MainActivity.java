@@ -250,7 +250,8 @@ public class MainActivity extends Activity {
 
         root.addView(topBar);
 
-        TextView sub = tv("  ▸ SUBSYSTEM: DNS_OVERRIDE  //  v2.8  +SHIZUKU", 11, C_GREEN_D, false);
+        TextView sub = tv("  ▸ SUBSYSTEM: DNS_OVERRIDE  //  v"
+                + appVersion().replaceAll("\\s*\\(.*\\)$", "") + "  +SHIZUKU", 11, C_GREEN_D, false);
         sub.setPadding(0, dp(2), 0, dp(8));
         root.addView(sub);
 
@@ -543,16 +544,26 @@ public class MainActivity extends Activity {
     }
 
     private void toggle() {
-        boolean on = isOn();
-        String stamp = now();
-        if (applyDns(!on)) {
-            addRunLog(stamp + (on ? "  CLOSE   →  OK   (mode=off)"
-                                  : "  OPEN    →  OK   (" + DNS_PRIMARY + ")"));
-            toast(on ? "已关闭拦截" : "已开启拦截");
-        } else {
-            fail(on ? "关闭" : "开启", "写入失败：没有 WRITE_SECURE_SETTINGS，Shizuku 也不可用");
-        }
-        ui.postDelayed(new Runnable() { @Override public void run() { refresh(); } }, 700);
+        final boolean on = isOn();
+        final String stamp = now();
+        toast(on ? "关闭中…" : "开启中…");
+        new Thread(new Runnable() {
+            @Override public void run() {
+                final boolean ok = applyDns(!on);
+                ui.post(new Runnable() {
+                    @Override public void run() {
+                        if (ok) {
+                            addRunLog(stamp + (on ? "  CLOSE   →  OK   (mode=off)"
+                                                  : "  OPEN    →  OK   (" + DNS_PRIMARY + ")"));
+                            toast(on ? "已关闭拦截" : "已开启拦截");
+                        } else {
+                            fail(on ? "关闭" : "开启", "写入失败：没有 WRITE_SECURE_SETTINGS，Shizuku 也不可用");
+                        }
+                        ui.postDelayed(new Runnable() { @Override public void run() { refresh(); } }, 700);
+                    }
+                });
+            }
+        }, "prts-toggle").start();
     }
 
     /**
@@ -671,30 +682,42 @@ public class MainActivity extends Activity {
     };
 
     private void defenseShutdown() {
-        // 1) 关掉全部拦截
-        applyDns(false);
-        ShizukuBridge.Result r = ShizukuBridge.exec(
-                "pm unsuspend --user 0 com.opos.ads ; pm unsuspend --user 10 com.opos.ads ; "
-                + "appops set com.opos.ads RUN_IN_BACKGROUND default ; "
-                + "appops set com.opos.ads WAKE_LOCK default");
-        addRunLog(now() + "  DEFENSE   →  DNS=off  ADS="
-                + (r.err.isEmpty() ? ("rc=" + r.code) : ("FAIL " + r.err)));
+        toast("正在关闭…");
+        new Thread(new Runnable() {
+            @Override public void run() {
+                // 1) 关掉全部拦截
+                applyDns(false);
+                final ShizukuBridge.Result r = ShizukuBridge.exec(
+                        "pm unsuspend --user 0 com.opos.ads ; pm unsuspend --user 10 com.opos.ads ; "
+                        + "appops set com.opos.ads RUN_IN_BACKGROUND default ; "
+                        + "appops set com.opos.ads WAKE_LOCK default");
+                ui.post(new Runnable() { @Override public void run() {
+                    addRunLog(now() + "  DEFENSE   →  DNS=off  ADS="
+                            + (r.err.isEmpty() ? ("rc=" + r.code) : ("FAIL " + r.err)));
+                }});
 
-        // 2) 撤掉自己的写设置权限（只有 Shizuku 还在时才敢这么做，否则下次补不回来）
-        if (ShizukuBridge.granted()) {
-            ShizukuBridge.Result r2 = ShizukuBridge.exec(
-                    "pm revoke " + getPackageName() + " android.permission.WRITE_SECURE_SETTINGS");
-        addRunLog(now() + "  DEFENSE   →  REVOKE "
-                    + (r2.err.isEmpty() ? ("rc=" + r2.code) : ("FAIL " + r2.err)));
-        } else {
-            addRunLog(now() + "  DEFENSE   →  REVOKE 跳过（没有 Shizuku，撤了就补不回来）");
-        }
+                // 2) 撤掉自己的写设置权限（只有 Shizuku 还在时才敢这么做，否则下次补不回来）
+                if (ShizukuBridge.granted()) {
+                    final ShizukuBridge.Result r2 = ShizukuBridge.exec(
+                            "pm revoke " + getPackageName() + " android.permission.WRITE_SECURE_SETTINGS");
+                    ui.post(new Runnable() { @Override public void run() {
+                        addRunLog(now() + "  DEFENSE   →  REVOKE "
+                                + (r2.err.isEmpty() ? ("rc=" + r2.code) : ("FAIL " + r2.err)));
+                    }});
+                } else {
+                    ui.post(new Runnable() { @Override public void run() {
+                        addRunLog(now() + "  DEFENSE   →  REVOKE 跳过（没有 Shizuku，撤了就补不回来）");
+                    }});
+                }
 
-        dnsPath = "offline";
-        renderContent();
-
-        // 3) 黑屏 → 普瑞赛斯 → 崩溃
-        startBlackout();
+                ui.post(new Runnable() { @Override public void run() {
+                    dnsPath = "offline";
+                    renderContent();
+                    // 3) 黑屏 → 普瑞赛斯 → 崩溃
+                    startBlackout();
+                }});
+            }
+        }, "prts-defense").start();
     }
 
     private void startBlackout() {
@@ -1136,21 +1159,9 @@ public class MainActivity extends Activity {
         adsHead.setPadding(0, 0, 0, dp(6));
         contentBox.addView(adsHead);
 
-        String susp = "?";
-        String procs = "?";
-        if (ok) {
-            ShizukuBridge.Result r = ShizukuBridge.exec(
-                    "dumpsys package com.opos.ads | grep -m1 'User 0:' ; echo '###' ; " +
-                    "ps -A | grep -c 'com.opos.ads'");
-            if (r.err.isEmpty()) {
-                String[] parts = r.out.split("###");
-                if (parts.length >= 1) susp = parts[0].contains("suspended=true") ? "YES" : "NO";
-                if (parts.length >= 2) {
-                    String n = parts[1].trim().replaceAll("[^0-9]", "");
-                    procs = n.isEmpty() ? "0" : n;
-                }
-            }
-        }
+        if (ok) refreshAdsAsync();
+        String susp = cSusp;
+        String procs = cProcs;
 
         contentBox.addView(kv("SUSPENDED", susp));
         contentBox.addView(kv("PROCESSES", procs));
@@ -1166,12 +1177,7 @@ public class MainActivity extends Activity {
         });
         contentBox.addView(r2);
 
-        String ops = "?";
-        if (ok) {
-            ShizukuBridge.Result ro = ShizukuBridge.exec(
-                    "appops get com.opos.ads RUN_IN_BACKGROUND | head -1");
-            if (ro.err.isEmpty()) ops = ro.out.contains("ignore") ? "IGNORE" : "DEFAULT";
-        }
+        String ops = cOps;
         contentBox.addView(kv("BACKGROUND", ops));
 
         LinearLayout r3 = row();
@@ -1201,6 +1207,35 @@ public class MainActivity extends Activity {
              "文件开头带设备、版本、DNS、Shizuku 状态，出问题时整份发出去比截图有用。", C_DIM);
     }
 
+    // ---- SYS 页签的 ADS 状态：缓存 + 后台刷新，绝不在主线程 exec ----
+    private boolean adsRefreshing = false;
+    private long adsRefreshedAt = 0;
+    private String cSusp = "…", cProcs = "…", cOps = "…";
+
+    private void refreshAdsAsync() {
+        if (adsRefreshing) return;
+        if (System.currentTimeMillis() - adsRefreshedAt < 5000) return;
+        adsRefreshing = true;
+        execAsync("dumpsys package com.opos.ads | grep -m1 'User 0:' ; echo '###' ; ps -A | grep -c 'com.opos.ads'",
+                new Exec() { @Override public void done(ShizukuBridge.Result r) {
+            if (r.err.isEmpty()) {
+                String[] parts = r.out.split("###");
+                if (parts.length >= 1) cSusp = parts[0].contains("suspended=true") ? "YES" : "NO";
+                if (parts.length >= 2) {
+                    String n = parts[1].trim().replaceAll("[^0-9]", "");
+                    cProcs = n.isEmpty() ? "0" : n;
+                }
+            } else { cSusp = "?"; cProcs = "?"; }
+            execAsync("appops get com.opos.ads RUN_IN_BACKGROUND | head -1",
+                    new Exec() { @Override public void done(ShizukuBridge.Result ro) {
+                cOps = ro.err.isEmpty() ? (ro.out.contains("ignore") ? "IGNORE" : "DEFAULT") : "?";
+                adsRefreshedAt = System.currentTimeMillis();
+                adsRefreshing = false;
+                if (curTab == 4) renderContent();
+            }});
+        }});
+    }
+
     private void adsOps(boolean suppress) {
         String v = suppress ? "ignore" : "default";
         runShell(suppress ? "APPOPS_ON" : "APPOPS_OFF",
@@ -1209,17 +1244,16 @@ public class MainActivity extends Activity {
     }
 
     private void adsToggle() {
-        String cur = adsSuspended();
-        String label;
-        String script;
-        if ("YES".equals(cur)) {
-            label = "UNSUSPEND";
-            script = "pm unsuspend --user 0 com.opos.ads ; pm unsuspend --user 10 com.opos.ads";
-        } else {
-            label = "SUSPEND";
-            script = "pm suspend --user 0 com.opos.ads ; pm suspend --user 10 com.opos.ads";
-        }
-        runShell(label, script);
+        toast("读取状态…");
+        execAsync("dumpsys package com.opos.ads | grep -m1 'User 0:'", new Exec() {
+            @Override public void done(ShizukuBridge.Result q) {
+                boolean susp = q.err.isEmpty() && q.out.contains("suspended=true");
+                runShell(susp ? "UNSUSPEND" : "SUSPEND",
+                        susp
+                        ? "pm unsuspend --user 0 com.opos.ads ; pm unsuspend --user 10 com.opos.ads"
+                        : "pm suspend --user 0 com.opos.ads ; pm suspend --user 10 com.opos.ads");
+            }
+        });
     }
 
     private void adsKill() {
@@ -1234,8 +1268,26 @@ public class MainActivity extends Activity {
         return r.out.contains("suspended=true") ? "YES" : "NO";
     }
 
-    private void runShell(String label, String script) {
-        ShizukuBridge.Result r = ShizukuBridge.exec(script);
+    private interface Exec { void done(ShizukuBridge.Result r); }
+
+    /** 后台线程跑 Shizuku 脚本，结果回主线程 —— 主线程绝不碰 binder，防 ANR */
+    private void execAsync(final String script, final Exec cb) {
+        new Thread(new Runnable() {
+            @Override public void run() {
+                final ShizukuBridge.Result r = ShizukuBridge.exec(script);
+                ui.post(new Runnable() { @Override public void run() { cb.done(r); } });
+            }
+        }, "prts-exec").start();
+    }
+
+    private void runShell(final String label, final String script) {
+        toast("执行中…");
+        execAsync(script, new Exec() { @Override public void done(ShizukuBridge.Result r) {
+            runShellDone(label, r);
+        }});
+    }
+
+    private void runShellDone(String label, ShizukuBridge.Result r) {
         String body = r.err.isEmpty()
                 ? ("rc=" + r.code + "  " + firstLine(r.out))
                 : ("FAIL " + r.err);
@@ -1245,8 +1297,12 @@ public class MainActivity extends Activity {
     }
 
     private void bootstrapPerm() {
-        ShizukuBridge.Result r = ShizukuBridge.exec(
-                "pm grant " + getPackageName() + " android.permission.WRITE_SECURE_SETTINGS");
+        toast("执行中…");
+        execAsync("pm grant " + getPackageName() + " android.permission.WRITE_SECURE_SETTINGS",
+                new Exec() { @Override public void done(ShizukuBridge.Result r) { bootstrapPermDone(r); }});
+    }
+
+    private void bootstrapPermDone(ShizukuBridge.Result r) {
         String body = r.err.isEmpty() ? ("rc=" + r.code + " " + firstLine(r.out)) : ("FAIL " + r.err);
         addRunLog(now() + "  GRANT     →  " + body);
         toast(hasWss() ? "权限已补上" : "没成功，看运行日志");
