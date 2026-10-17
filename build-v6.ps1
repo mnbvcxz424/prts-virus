@@ -6,6 +6,17 @@ $jdk  = 'C:\AndroidDev\jdk-17\bin'
 $libs = "$root\libs"
 $out  = "$root\out\v6"
 
+# --- 签名密码：绝不写死在仓库里 ---
+# 用环境变量传：  set DNSAPK_KS_PASS=你的密码
+# 不设的话会提示输入（输入不回显）
+$ksPass = $env:DNSAPK_KS_PASS
+if ([string]::IsNullOrEmpty($ksPass)) {
+    $sec = Read-Host "输入 keystore 密码（alias: dns）" -AsSecureString
+    $ksPass = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+        [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec))
+}
+if ([string]::IsNullOrEmpty($ksPass)) { throw "缺少签名密码：请设置环境变量 DNSAPK_KS_PASS" }
+
 $env:JAVA_HOME = 'C:\AndroidDev\jdk-17'
 $env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
 
@@ -61,8 +72,8 @@ Write-Host "[6/7] zipalign"
 if ($LASTEXITCODE -ne 0) { throw "zipalign failed" }
 
 Write-Host "[7/7] apksigner"
-& "$bt\apksigner.bat" sign --ks "$root\dns.keystore" --ks-pass pass:dnscat2026 `
-    --ks-key-alias dns --key-pass pass:dnscat2026 `
+& "$bt\apksigner.bat" sign --ks "$root\dns.keystore" --ks-pass "pass:$ksPass" `
+    --ks-key-alias dns --key-pass "pass:$ksPass" `
     --v1-signing-enabled true --v2-signing-enabled true `
     --out "$out\MaomaoDNS-v6.apk" "$out\aligned.apk"
 if ($LASTEXITCODE -ne 0) { throw "apksigner failed" }
