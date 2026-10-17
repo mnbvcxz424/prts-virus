@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.cat.dnsswitch"
-    android:versionCode="25"
-    android:versionName="3.2.5">
+    android:versionCode="26"
+    android:versionName="3.3.0">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="33" />
 
@@ -56,6 +56,12 @@
         <meta-data
             android:name="moe.shizuku.client.V3_SUPPORT"
             android:value="true" />
+
+        <activity
+            android:name=".SosActivity"
+            android:exported="false"
+            android:label="SOS 应急响应"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
 
         <activity
             android:name=".BrowserActivity"

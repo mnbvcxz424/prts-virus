@@ -439,6 +439,33 @@ public class MainActivity extends Activity {
         head.setPadding(0, 0, 0, dp(8));
         contentBox.addView(head);
 
+        // SOS 应急横幅
+        LinearLayout sos = new LinearLayout(this);
+        sos.setOrientation(LinearLayout.HORIZONTAL);
+        sos.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        sos.setPadding(dp(14), dp(14), dp(14), dp(14));
+        sos.setBackground(makeBox(C_BG, C_DANGER, 2, 2));
+        LinearLayout.LayoutParams sosLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        sosLp.setMargins(0, 0, 0, dp(12));
+        sos.setLayoutParams(sosLp);
+        TextView sosIco = tv("\u26a0", 22, C_DANGER, true);
+        sosIco.setPadding(0, 0, dp(12), 0);
+        sos.addView(sosIco);
+        LinearLayout sosCol = new LinearLayout(this);
+        sosCol.setOrientation(LinearLayout.VERTICAL);
+        sosCol.addView(tv("SOS 应急响应", 15, C_DANGER, true));
+        sosCol.addView(tv(L("KILL · HIDE · GUARD", "强停 · 隐藏后台 · 进程守护"), 10, C_DIM, false));
+        sos.addView(sosCol, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        sos.addView(tv(">", 18, C_DANGER, true));
+        sos.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                startActivity(new android.content.Intent(MainActivity.this, SosActivity.class));
+            }
+        });
+        contentBox.addView(sos);
+
         addCardRow(
             card("\u26e8", "DNS 拦截", dnsOn ? L("ON", "已开启") : L("OFF", "已关闭"),
                     dnsOn ? C_GREEN : C_DIM, new Runnable() {
