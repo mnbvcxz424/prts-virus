@@ -1,0 +1,14 @@
+# 构建产物
+/out/
+/obj/
+/_artifacts/
+
+# 签名私钥：绝不入库
+*.keystore
+*.jks
+*.p12
+
+# 系统垃圾
+Thumbs.db
+desktop.ini
+*.bak
