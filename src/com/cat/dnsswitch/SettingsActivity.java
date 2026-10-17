@@ -99,7 +99,7 @@ public class SettingsActivity extends Activity {
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         top.addView(title);
 
-        TextView back = tv("[BACK]", 12, C_GREEN, true);
+        TextView back = tv(isCn() ? "[返回]" : "[BACK]", 12, C_GREEN, true);
         back.setPadding(dp(10), dp(6), dp(10), dp(6));
         back.setBackground(makeBox(C_BG, C_GREEN_X, 2, 1));
         back.setOnClickListener(new View.OnClickListener() {
@@ -108,7 +108,8 @@ public class SettingsActivity extends Activity {
         top.addView(back);
         page.addView(top);
 
-        TextView sub = tv("  ▸ SUBSYSTEM: CONTROL_PANEL  //  v" + verName, 11, C_GREEN_D, false);
+        TextView sub = tv("  ▸ " + L("SUBSYSTEM: CONTROL_PANEL", "子系统: 控制面板")
+                + "  //  v" + verName, 11, C_GREEN_D, false);
         sub.setPadding(0, dp(2), 0, dp(6));
         page.addView(sub);
 
@@ -136,9 +137,27 @@ public class SettingsActivity extends Activity {
         boolean ok   = run && ShizukuBridge.granted();
         int space    = ShizukuBridge.userId();
 
+        // ---------- 语言 ----------
+        box.addView(section(L("// LANGUAGE", "// 语言")));
+        box.addView(kv(L("CN_MODE", "中文模式"),
+                isCn() ? L("ON", "开启") : L("OFF", "关闭")));
+        btn(isCn() ? "> 切回英文界面" : "> 一键转中文（看不懂英文点这里）",
+                C_GREEN, new View.OnClickListener() {
+                    @Override public void onClick(View v) {
+                        boolean now = !isCn();
+                        getSharedPreferences("prts", MODE_PRIVATE)
+                                .edit().putBoolean("cn", now).apply();
+                        toast(now ? "已切换成中文" : "已切回英文");
+                        recreate();
+                    }
+                });
+        box.addView(hint(isCn()
+                ? "开了中文模式，界面上的英文标签会变成中文。随时可以切回来。"
+                : "Turn on Chinese mode if you cannot read the English labels.", C_DIM));
+
         // ---------- ROOT ----------
         box.addView(section("// ROOT"));
-        box.addView(kv("STATUS", "NOT_AVAILABLE"));
+        box.addView(kv(L("STATUS", "状态"), L("NOT_AVAILABLE", "不可用")));
         box.addView(hint("还在画图纸。点了会得到一句实话。", C_DIM));
         btn("> 请求 ROOT 权限", C_DANGER, new View.OnClickListener() {
             @Override public void onClick(View v) {
@@ -149,12 +168,13 @@ public class SettingsActivity extends Activity {
         // ---------- SHELL / SHIZUKU ----------
         box.addView(divider());
         box.addView(section("// SHELL  (SHIZUKU)"));
-        box.addView(kv("INSTALL", inst ? "YES" : "NO"));
-        box.addView(kv("SERVER", run ? "RUNNING" : "STOPPED"));
-        box.addView(kv("PERMISSION", ok ? "GRANTED" : (run ? "PENDING" : "N/A")));
-        box.addView(kv("VERSION", run ? ("v" + ShizukuBridge.version()) : "(none)"));
-        box.addView(kv("UID", ok ? String.valueOf(ShizukuBridge.uid()) : "(none)"));
-        box.addView(kv("SPACE", space == 0 ? "MAIN" : ("USER_" + space)));
+        box.addView(kv(L("INSTALL", "安装"), inst ? L("YES", "是") : L("NO", "否")));
+        box.addView(kv(L("SERVER", "服务"), run ? L("RUNNING", "运行中") : L("STOPPED", "已停止")));
+        box.addView(kv(L("PERMISSION", "授权"),
+                ok ? L("GRANTED", "已授权") : (run ? L("PENDING", "待授权") : "N/A")));
+        box.addView(kv(L("VERSION", "版本"), run ? ("v" + ShizukuBridge.version()) : "(none)"));
+        box.addView(kv(L("UID", "用户号"), ok ? String.valueOf(ShizukuBridge.uid()) : "(none)"));
+        box.addView(kv(L("SPACE", "空间"), space == 0 ? L("MAIN", "本空间") : ("USER_" + space)));
 
         if (space != 0) {
             box.addView(hint("当前这份跑在分身/壶中界空间（user " + space + "）。\n" +
@@ -257,18 +277,24 @@ public class SettingsActivity extends Activity {
         foot.setPadding(0, dp(12), 0, 0);
         box.addView(foot);
 
-        TextView ver = tv("VERSION   v" + verName + "  (" + verCode + ")", 11, C_DIM, false);
+        TextView ver = tv(L("VERSION", "版本") + "   v" + verName + "  (" + verCode + ")", 11, C_DIM, false);
         ver.setGravity(Gravity.CENTER);
         ver.setPadding(0, dp(6), 0, 0);
         box.addView(ver);
 
-        TextView author = tv("AUTHOR    猫猫  ·  愚鸟", 13, C_GREEN, true);
+        TextView author = tv(L("AUTHOR", "作者") + "    猫猫  ·  愚鸟", 13, C_GREEN, true);
         author.setGravity(Gravity.CENTER);
         author.setPadding(0, dp(6), 0, dp(24));
         box.addView(author);
     }
 
     // ==================== 小工具 ====================
+
+    /** 中文模式：设置页里「一键转中文」按钮控制的全局开关 */
+    private boolean isCn() {
+        return getSharedPreferences("prts", MODE_PRIVATE).getBoolean("cn", false);
+    }
+    private String L(String en, String zh) { return isCn() ? zh : en; }
 
     private TextView section(String s) {
         TextView t = tv(s, 11, C_GREEN_D, false);
@@ -321,7 +347,7 @@ public class SettingsActivity extends Activity {
     }
 
     private TextView kv(String k, String v) {
-        TextView t = tv("  " + pad(k, 16) + v, 12, C_GREEN_D, false);
+        TextView t = tv("  " + pad(k, isCn() ? 10 : 16) + v, 12, C_GREEN_D, false);
         t.setPadding(0, dp(5), 0, dp(5));
         return t;
     }

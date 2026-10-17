@@ -108,6 +108,12 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         refresh();
+        // 从设置页回来时中文模式可能被切了 —— 变了就整个重建界面
+        Boolean was = cnCache;
+        cnCache = null;
+        if (was != null && was.booleanValue() != isCn()) {
+            recreate();
+        }
     }
 
     // ==================== 日志导出（TXT） ====================
@@ -240,7 +246,7 @@ public class MainActivity extends Activity {
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         topBar.addView(title);
 
-        TextView btnSet = tv("[SET]", 12, C_GREEN, true);
+        TextView btnSet = tv("\u2699", 22, C_GREEN, true);
         btnSet.setPadding(dp(10), dp(6), dp(10), dp(6));
         btnSet.setBackground(makeBox(C_BG, C_GREEN, 2, 2));
         btnSet.setOnClickListener(new View.OnClickListener() {
@@ -250,7 +256,8 @@ public class MainActivity extends Activity {
 
         root.addView(topBar);
 
-        TextView sub = tv("  ▸ SUBSYSTEM: DNS_OVERRIDE  //  v"
+        TextView sub = tv("  ▸ " + L("SUBSYSTEM: DNS_OVERRIDE", "子系统: DNS 覆盖")
+                + "  //  v"
                 + appVersion().replaceAll("\\s*\\(.*\\)$", "") + "  +SHIZUKU", 11, C_GREEN_D, false);
         sub.setPadding(0, dp(2), 0, dp(8));
         root.addView(sub);
@@ -379,13 +386,13 @@ public class MainActivity extends Activity {
         String spec = getDnsSpec();
         boolean on = "hostname".equals(mode);
 
-        contentBox.addView(kv("WELCOME", greeting()));
-        contentBox.addView(kv("MODE", mode));
-        contentBox.addView(kv("SPECIFIER", spec.isEmpty() ? "(none)" : spec));
-        contentBox.addView(kv("PRIMARY", DNS_PRIMARY));
-        contentBox.addView(kv("BACKUP", DNS_BACKUP));
-        contentBox.addView(kv("STATUS", on ? "BLOCKING" : "IDLE"));
-        contentBox.addView(kv("CHANNEL", dnsPath));
+        contentBox.addView(kv(L("WELCOME", "问候"), greeting()));
+        contentBox.addView(kv(L("MODE", "模式"), mode));
+        contentBox.addView(kv(L("SPECIFIER", "指定服务器"), spec.isEmpty() ? "(none)" : spec));
+        contentBox.addView(kv(L("PRIMARY", "主服务器"), DNS_PRIMARY));
+        contentBox.addView(kv(L("BACKUP", "备用服务器"), DNS_BACKUP));
+        contentBox.addView(kv(L("STATUS", "状态"), on ? "BLOCKING" : "IDLE"));
+        contentBox.addView(kv(L("CHANNEL", "通道"), dnsPath));
 
         contentBox.addView(divider());
 
@@ -900,8 +907,19 @@ public class MainActivity extends Activity {
         return t;
     }
 
+    /** 中文模式：由设置页那个「一键转中文」按钮控制，存在 SharedPreferences */
+    private Boolean cnCache;
+    boolean isCn() {
+        if (cnCache == null) {
+            cnCache = getSharedPreferences("prts", MODE_PRIVATE).getBoolean("cn", false);
+        }
+        return cnCache;
+    }
+    /** 英文标签 → 中文标签 */
+    private String L(String en, String zh) { return isCn() ? zh : en; }
+
     private TextView kv(String k, String v) {
-        TextView t = tv("  " + pad(k, 16) + v, 12, C_GREEN_D, false);
+        TextView t = tv("  " + pad(k, isCn() ? 10 : 16) + v, 12, C_GREEN_D, false);
         t.setPadding(0, dp(5), 0, dp(5));
         return t;
     }
@@ -1107,12 +1125,13 @@ public class MainActivity extends Activity {
         head.setPadding(0, 0, 0, dp(6));
         contentBox.addView(head);
 
-        contentBox.addView(kv("INSTALL", inst ? "YES" : "NO"));
-        contentBox.addView(kv("SERVER", run ? "RUNNING" : "STOPPED"));
-        contentBox.addView(kv("PERMISSION", ok ? "GRANTED" : (run ? "PENDING" : "N/A")));
-        contentBox.addView(kv("VERSION", run ? ("v" + ShizukuBridge.version()) : "(none)"));
-        contentBox.addView(kv("UID", ok ? String.valueOf(ShizukuBridge.uid()) : "(none)"));
-        contentBox.addView(kv("SPACE", space == 0 ? "MAIN" : ("USER_" + space)));
+        contentBox.addView(kv(L("INSTALL", "安装"), inst ? L("YES", "是") : L("NO", "否")));
+        contentBox.addView(kv(L("SERVER", "服务"), run ? L("RUNNING", "运行中") : L("STOPPED", "已停止")));
+        contentBox.addView(kv(L("PERMISSION", "授权"),
+                ok ? L("GRANTED", "已授权") : (run ? L("PENDING", "待授权") : "N/A")));
+        contentBox.addView(kv(L("VERSION", "版本"), run ? ("v" + ShizukuBridge.version()) : "(none)"));
+        contentBox.addView(kv(L("UID", "用户号"), ok ? String.valueOf(ShizukuBridge.uid()) : "(none)"));
+        contentBox.addView(kv(L("SPACE", "空间"), space == 0 ? L("MAIN", "本空间") : ("USER_" + space)));
 
         if (space != 0) {
             hint("当前这份跑在分身/壶中界空间（user " + space + "）。\n" +
@@ -1139,7 +1158,8 @@ public class MainActivity extends Activity {
         // ---- 写设置权限 ----
         contentBox.addView(divider());
         boolean wss = hasWss();
-        contentBox.addView(kv("WRITE_SETTINGS", wss ? "GRANTED" : "MISSING"));
+        contentBox.addView(kv(L("WRITE_SETTINGS", "写设置权限"),
+                wss ? L("GRANTED", "已授权") : L("MISSING", "缺失")));
         if (wss) {
             hint("开关走直连通道，不经过 Shizuku。", C_DIM);
         } else if (ok) {
@@ -1163,8 +1183,8 @@ public class MainActivity extends Activity {
         String susp = cSusp;
         String procs = cProcs;
 
-        contentBox.addView(kv("SUSPENDED", susp));
-        contentBox.addView(kv("PROCESSES", procs));
+        contentBox.addView(kv(L("SUSPENDED", "挂起状态"), susp));
+        contentBox.addView(kv(L("PROCESSES", "进程数"), procs));
 
         boolean isSusp = "YES".equals(susp);
         LinearLayout r2 = row();
@@ -1178,7 +1198,7 @@ public class MainActivity extends Activity {
         contentBox.addView(r2);
 
         String ops = cOps;
-        contentBox.addView(kv("BACKGROUND", ops));
+        contentBox.addView(kv(L("BACKGROUND", "后台限制"), ops));
 
         LinearLayout r3 = row();
         btnIn(r3, "> 压制后台", C_GREEN_D, new View.OnClickListener() {
@@ -1198,8 +1218,9 @@ public class MainActivity extends Activity {
 
         // ---- 日志导出 ----
         contentBox.addView(divider());
-        contentBox.addView(kv("LOG_LINES",
-                "RUN " + countLines("run_log") + "  /  BLOCK " + countLines("block_log")));
+        contentBox.addView(kv(L("LOG_LINES", "日志行数"),
+                L("RUN", "运行") + " " + countLines("run_log")
+                + "  /  " + L("BLOCK", "拦截") + " " + countLines("block_log")));
         btnFull("> 导出全部日志 (TXT)", C_GREEN, new View.OnClickListener() {
             @Override public void onClick(View v) { exportLog("all", "全部日志"); }
         });

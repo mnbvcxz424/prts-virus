@@ -4,7 +4,7 @@
 
 **Android 私人 DNS 广告拦截 · Shizuku 命令通道 · 终端风格界面**
 
-`v2.8.1` · `versionCode 15` · Android 7.0+ · 180 KB
+`v2.9` · `versionCode 16` · Android 7.0+ · 180 KB
 
 [**⬇ 下载 APK**](https://github.com/mnbvcxz424/prts-virus/releases/latest) &nbsp;·&nbsp; [使用说明](#使用说明) &nbsp;·&nbsp; [常见问题](#常见问题)
 
@@ -28,6 +28,7 @@
 | **运行日志** | 每一次开关、探测、导出都留痕，42 条起步 |
 | **日志导出** | 通过系统文件选择器存成 TXT，不需要存储权限 |
 | **应用规则** | 按 App 单独设置，无障碍服务实现 |
+| **中文模式** | 设置页一键切换，英文标签全变中文 —— 看不懂英文也能用 |
 | **彩蛋** | 主界面最下面那个红框按钮 …… 按下去就没有回头路了 |
 
 ## 界面
@@ -35,6 +36,12 @@
 | 设置页 | 运行日志 |
 |---|---|
 | ![设置](docs/screenshots/settings.png) | ![日志](docs/screenshots/log.png) |
+
+### 中文模式
+
+右上角齿轮 → 设置 → 语言 → 一键转中文。英文标签会全部换成中文，随时可以切回去。
+
+![中文模式](docs/screenshots/cn-mode.png)
 
 ## 能拦什么，拦不住什么
 
@@ -53,7 +60,7 @@
 
 1. 打开 [Releases](https://github.com/mnbvcxz424/prts-virus/releases/latest)，下载 `.apk`
 2. 手机上点开安装（要允许「安装未知应用」）
-3. 打开后进右上角 `[SET]`，先把**使用说明**那六段读完
+3. 打开后进右上角**齿轮 ⚙**，先把**使用说明**那六段读完；看不懂英文就点「一键转中文」
 
 ## 使用说明
 
