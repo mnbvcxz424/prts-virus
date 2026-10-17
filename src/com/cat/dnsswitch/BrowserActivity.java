@@ -1,11 +1,12 @@
 package com.cat.dnsswitch;
 
 import android.app.Activity;
-import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.text.InputType;
@@ -13,6 +14,7 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.view.inputmethod.EditorInfo;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -21,6 +23,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -263,75 +266,182 @@ public class BrowserActivity extends Activity {
     // ==================== 搜索引擎 ====================
 
     private void pickEngine() {
-        final String[] items = new String[ENGINES.length + 1];
-        for (int i = 0; i < ENGINES.length; i++) items[i] = ENGINES[i][0];
-        items[ENGINES.length] = "自定义…";
+        final Dialog d = baseDialog();
 
-        int checked = 0;
-        for (int i = 0; i < ENGINES.length; i++) {
-            if (ENGINES[i][0].equals(seName)) { checked = i; break; }
-        }
-        new AlertDialog.Builder(this)
-                .setTitle("选择搜索引擎")
-                .setSingleChoiceItems(items, checked, new DialogInterface.OnClickListener() {
-                    @Override public void onClick(DialogInterface d, int which) {
-                        d.dismiss();
-                        if (which < ENGINES.length) {
-                            seName = ENGINES[which][0];
-                            seUrl  = ENGINES[which][1];
-                            saveEngine();
-                            updateEngineBtn();
-                            toast("引擎已切换：" + seName);
-                        } else {
-                            customEngine();
-                        }
-                    }
-                })
-                .setNegativeButton("取消", null)
-                .show();
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setBackground(box(C_BG, C_BLUE, 2));
+        panel.setPadding(dp(14), dp(14), dp(14), dp(14));
+
+        TextView title = mono("PRTS://ENGINE-SELECT", 13, C_BLUE, true);
+        title.setLetterSpacing(0.05f);
+        panel.addView(title);
+
+        TextView sub = mono("选择搜索引擎 · 共 " + ENGINES.length + " 个内置", 10, C_DIM, false);
+        sub.setPadding(0, dp(4), 0, dp(10));
+        panel.addView(sub);
+
+        panel.addView(secLabel("[ 国内 ]"));
+        for (int i = 0; i < 5 && i < ENGINES.length; i++) panel.addView(engineRow(d, i));
+
+        panel.addView(secLabel("[ 国外 ]"));
+        for (int i = 5; i < ENGINES.length; i++) panel.addView(engineRow(d, i));
+
+        panel.addView(secLabel("[ 其他 ]"));
+        TextView custom = mono("  + 自定义搜索引擎…", 13, C_BLUE2, true);
+        custom.setPadding(dp(6), dp(10), dp(6), dp(10));
+        custom.setBackground(box(C_BG, C_BOX, 1));
+        custom.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { d.dismiss(); customEngine(); }
+        });
+        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        clp.setMargins(0, 0, 0, dp(4));
+        custom.setLayoutParams(clp);
+        panel.addView(custom);
+
+        TextView cancel = mono("  × 取消", 12, C_DIM, false);
+        cancel.setPadding(dp(6), dp(9), dp(6), dp(9));
+        cancel.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { d.dismiss(); }
+        });
+        panel.addView(cancel);
+
+        showPanel(d, panel);
+    }
+
+    /** 一行引擎选项，终端风格的方框 */
+    private View engineRow(final Dialog d, final int i) {
+        boolean sel = ENGINES[i][0].equals(seName);
+        String host = ENGINES[i][1];
+        host = host.replace("https://", "").replace("http://", "");
+        int q = host.indexOf('?');
+        if (q > 0) host = host.substring(0, q);
+        int s = host.indexOf('/');
+        if (s > 0) host = host.substring(0, s);
+
+        String mark = sel ? " \u25c9  " : " \u25cb  ";
+        String label = mark + ENGINES[i][0] + "\n        " + host;
+        TextView t = mono(label, 13, sel ? C_BLUE2 : C_BLUE, sel);
+        t.setPadding(dp(6), dp(8), dp(6), dp(8));
+        t.setLineSpacing(dp(2), 1f);
+        t.setBackground(box(sel ? C_FILL : C_BG, sel ? C_BLUE2 : C_BOX, sel ? 2 : 1));
+        t.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                seName = ENGINES[i][0];
+                seUrl   = ENGINES[i][1];
+                saveEngine();
+                updateEngineBtn();
+                toast("引擎已切换：" + seName);
+                d.dismiss();
+            }
+        });
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, 0, 0, dp(4));
+        t.setLayoutParams(lp);
+        return t;
     }
 
     private void customEngine() {
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(20), dp(8), dp(20), dp(4));
+        final Dialog d = baseDialog();
 
-        TextView t1 = smallLabel("名称（显示在按钮上）");
-        box.addView(t1);
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setBackground(box(C_BG, C_BLUE, 2));
+        panel.setPadding(dp(14), dp(14), dp(14), dp(14));
+
+        panel.addView(mono("PRTS://ENGINE-CUSTOM", 13, C_BLUE, true));
+        TextView sub = mono("用 %s 代替搜索关键词", 10, C_DIM, false);
+        sub.setPadding(0, dp(4), 0, dp(12));
+        panel.addView(sub);
+
+        panel.addView(label("NAME / 名称"));
         final EditText eName = input(seName, InputType.TYPE_CLASS_TEXT);
-        box.addView(eName);
+        panel.addView(eName);
 
-        TextView t2 = smallLabel("搜索地址，用 %s 代替关键词");
-        t2.setPadding(0, dp(10), 0, 0);
-        box.addView(t2);
-        final EditText eUrl = input(seUrl.contains("%s") ? seUrl : "", InputType.TYPE_TEXT_VARIATION_URI);
-        box.addView(eUrl);
+        panel.addView(label("URL / 搜索地址"));
+        final EditText eUrl = input(seUrl, InputType.TYPE_TEXT_VARIATION_URI);
+        panel.addView(eUrl);
 
-        TextView t3 = smallLabel("例：https://www.baidu.com/s?wd=%s");
-        t3.setTextColor(C_DIM);
-        t3.setPadding(0, dp(6), 0, 0);
-        box.addView(t3);
+        TextView eg = mono("例：https://www.baidu.com/s?wd=%s", 10, C_DIM, false);
+        eg.setPadding(0, dp(6), 0, dp(12));
+        panel.addView(eg);
 
-        new AlertDialog.Builder(this)
-                .setTitle("自定义搜索引擎")
-                .setView(box)
-                .setPositiveButton("保存", new DialogInterface.OnClickListener() {
-                    @Override public void onClick(DialogInterface d, int w) {
-                        String n = eName.getText().toString().trim();
-                        String u = eUrl.getText().toString().trim();
-                        if (n.isEmpty() || !u.contains("%s")) {
-                            toast("名称不能空，地址里必须包含 %s");
-                            return;
-                        }
-                        seName = n;
-                        seUrl  = u;
-                        saveEngine();
-                        updateEngineBtn();
-                        toast("已保存自定义引擎：" + n);
-                    }
-                })
-                .setNegativeButton("取消", null)
-                .show();
+        TextView save = mono("  [ 保存 ]", 13, C_BLUE, true);
+        save.setPadding(dp(6), dp(10), dp(6), dp(10));
+        save.setBackground(box(C_FILL, C_BLUE, 1));
+        save.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                String n = eName.getText().toString().trim();
+                String u = eUrl.getText().toString().trim();
+                if (n.isEmpty() || !u.contains("%s")) {
+                    toast("名称不能空，地址里必须包含 %s");
+                    return;
+                }
+                seName = n;
+                seUrl  = u;
+                saveEngine();
+                updateEngineBtn();
+                toast("已保存自定义引擎：" + n);
+                d.dismiss();
+            }
+        });
+        panel.addView(save);
+
+        TextView cancel = mono("  × 取消", 12, C_DIM, false);
+        cancel.setPadding(dp(6), dp(10), dp(6), dp(10));
+        cancel.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { d.dismiss(); }
+        });
+        panel.addView(cancel);
+
+        showPanel(d, panel);
+    }
+
+    // ---------- 对话框基建（全自绘，不用系统 Material 样式） ----------
+
+    private Dialog baseDialog() {
+        Dialog d = new Dialog(this);
+        d.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        return d;
+    }
+
+    private void showPanel(Dialog d, View panel) {
+        ScrollView sv = new ScrollView(this);
+        sv.setBackgroundColor(C_BG);
+        sv.addView(panel);
+        d.setContentView(sv);
+        d.show();
+        Window w = d.getWindow();
+        if (w != null) {
+            w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            int width = (int) (getResources().getDisplayMetrics().widthPixels * 0.92);
+            w.setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+    }
+
+    private TextView mono(String s, int sp, int color, boolean bold) {
+        TextView t = new TextView(this);
+        t.setText(s);
+        t.setTextColor(color);
+        t.setTextSize(sp);
+        t.setTypeface(Typeface.MONOSPACE, bold ? Typeface.BOLD : Typeface.NORMAL);
+        return t;
+    }
+
+    private TextView secLabel(String s) {
+        TextView t = mono(s, 11, C_DIM, true);
+        t.setPadding(dp(2), dp(12), 0, dp(6));
+        t.setLetterSpacing(0.1f);
+        return t;
+    }
+
+    private TextView label(String s) {
+        TextView t = mono(s, 10, C_DIM, true);
+        t.setPadding(0, dp(2), 0, dp(4));
+        t.setLetterSpacing(0.08f);
+        return t;
     }
 
     private void saveEngine() {
