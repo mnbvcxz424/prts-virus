@@ -148,13 +148,13 @@ public class SosActivity extends Activity {
         sub.setPadding(0, dp(4), 0, dp(2));
         box.addView(sub);
 
-        TextView ver = tv("v" + version() + "  //  +SHIZUKU  //  " + (shizukuOk() ? "链路正常" : "链路断开"), 10, C_DIM, false);
+        TextView ver = tv("v" + version() + "  ·  +SHIZUKU  ·  " + (shizukuOk() ? "链路正常" : "链路断开"), 10, C_DIM, false);
         ver.setPadding(0, dp(2), 0, dp(10));
         box.addView(ver);
         box.addView(divider());
 
         // ---------- 威胁扫描 ----------
-        box.addView(section("// THREAT_SCAN  ·  威胁分析"));
+        box.addView(section("THREAT_SCAN  ·  威胁分析"));
         int hi = 0, mid = 0, low = 0;
         for (Proc p : procs) {
             if (p.level == 0) hi++;
@@ -182,12 +182,12 @@ public class SosActivity extends Activity {
             // 中等威胁
             addLevelBlock("中等威胁", 1, C_WARN);
             // 疑无只给数字
-            box.addView(section("// 疑似无威胁"));
+            box.addView(section("疑似无威胁"));
             box.addView(hint("共 " + low + " 个系统进程和当前前台 App，不列出来占地方。", C_DIM));
         }
 
         // ---------- 隐藏后台 ----------
-        box.addView(section("// HIDE  ·  隐藏并冻结"));
+        box.addView(section("HIDE  ·  隐藏并冻结"));
         List<String> hidden = sosList();
         if (hidden.isEmpty()) {
             box.addView(hint("还没有隐藏任何 App。", C_DIM));
@@ -222,7 +222,7 @@ public class SosActivity extends Activity {
         });
 
         // ---------- 进程守护 ----------
-        box.addView(section("// GUARD  ·  进程守护"));
+        box.addView(section("GUARD  ·  进程守护"));
         box.addView(kv("开关", guardOn() ? "开启" : "关闭", guardOn() ? C_GREEN : C_DIM));
         box.addView(kv("已守护", guardCount() + " 次", C_WHITE));
         btn(guardOn() ? "> 关闭守护" : "> 开启守护",
@@ -247,7 +247,7 @@ public class SosActivity extends Activity {
         List<Proc> list = new ArrayList<Proc>();
         for (Proc p : procs) if (p.level == level) list.add(p);
 
-        box.addView(section("// " + name));
+        box.addView(section(name));
         if (list.isEmpty()) {
             box.addView(hint("这一级没有进程。", C_DIM));
             return;

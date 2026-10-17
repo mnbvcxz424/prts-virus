@@ -109,7 +109,7 @@ public class SettingsActivity extends Activity {
         page.addView(top);
 
         TextView sub = tv("  ▸ " + L("SUBSYSTEM: CONTROL_PANEL", "子系统: 控制面板")
-                + "  //  v" + verName, 11, C_GREEN_D, false);
+                + "  ·  v" + verName, 11, C_GREEN_D, false);
         sub.setPadding(0, dp(2), 0, dp(6));
         page.addView(sub);
 
@@ -138,7 +138,7 @@ public class SettingsActivity extends Activity {
         int space    = ShizukuBridge.userId();
 
         // ---------- 语言 ----------
-        box.addView(section(L("// LANGUAGE", "// 语言")));
+        box.addView(section(L("LANGUAGE", "语言")));
         box.addView(kv(L("CN_MODE", "中文模式"),
                 isCn() ? L("ON", "开启") : L("OFF", "关闭")));
         btn(isCn() ? "> 切回英文界面" : "> 一键转中文（看不懂英文点这里）",
@@ -156,7 +156,7 @@ public class SettingsActivity extends Activity {
                 : "Turn on Chinese mode if you cannot read the English labels.", C_DIM));
 
         // ---------- 拦截过滤器 ----------
-        box.addView(section(L("// FILTERS", "// 过滤器")));
+        box.addView(section(L("FILTERS", "过滤器")));
         final android.content.SharedPreferences ps = getSharedPreferences("prts", MODE_PRIVATE);
         for (int gi = 0; gi < 4; gi++) {
             final String key = AdRules.GROUP_KEYS[gi];
@@ -177,7 +177,7 @@ public class SettingsActivity extends Activity {
                 + AdRules.totalCount() + " 条。", C_DIM));
 
         // ---------- 信任的网络 ----------
-        box.addView(section(L("// TRUSTED_NET", "// 信任的网络")));
+        box.addView(section(L("TRUSTED_NET", "信任的网络")));
         final boolean trustOn = ps.getBoolean("trust_net", false);
         final String trusted = ps.getString("trust_ssids", "");
         box.addView(kv(L("PAUSE_ON_TRUST", "信任网络下暂停"), trustOn ? L("ON", "开") : L("OFF", "关")));
@@ -205,7 +205,7 @@ public class SettingsActivity extends Activity {
                 + "Android 的限制。", C_DIM));
 
         // ---------- ROOT ----------
-        box.addView(section("// ROOT"));
+        box.addView(section("ROOT"));
         box.addView(kv(L("STATUS", "状态"), L("NOT_AVAILABLE", "不可用")));
         box.addView(hint("还在画图纸。点了会得到一句实话。", C_DIM));
         btn("> 请求 ROOT 权限", C_DANGER, new View.OnClickListener() {
@@ -216,7 +216,7 @@ public class SettingsActivity extends Activity {
 
         // ---------- SHELL / SHIZUKU ----------
         box.addView(divider());
-        box.addView(section("// SHELL  (SHIZUKU)"));
+        box.addView(section("SHELL  (SHIZUKU)"));
         box.addView(kv(L("INSTALL", "安装"), inst ? L("YES", "是") : L("NO", "否")));
         box.addView(kv(L("SERVER", "服务"), run ? L("RUNNING", "运行中") : L("STOPPED", "已停止")));
         box.addView(kv(L("PERMISSION", "授权"),
@@ -276,7 +276,7 @@ public class SettingsActivity extends Activity {
 
         // ---------- 使用说明 ----------
         box.addView(divider());
-        box.addView(section("// 使用说明"));
+        box.addView(section("使用说明"));
 
         // 警示：红框 + 黑底 + 红字（不靠颜色区分，边框和文字都是同一处提醒）
         box.addView(warnBox("⚠ 先看这段",

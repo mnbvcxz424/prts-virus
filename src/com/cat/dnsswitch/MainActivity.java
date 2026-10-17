@@ -302,7 +302,7 @@ public class MainActivity extends Activity {
         root.addView(topBar);
 
         TextView sub = tv("  ▸ " + L("SUBSYSTEM: DNS_OVERRIDE", "子系统: DNS 覆盖")
-                + "  //  v"
+                + "  ·  v"
                 + appVersion().replaceAll("\\s*\\(.*\\)$", "") + "  +SHIZUKU", 11, C_GREEN_D, false);
         sub.setPadding(0, dp(2), 0, dp(8));
         root.addView(sub);
@@ -447,8 +447,8 @@ public class MainActivity extends Activity {
         contentBox.removeAllViews();
         if (launcherMode) { renderLauncher(); return; }
         if (curTab == 0) renderStateTab();
-        else if (curTab == 1) renderLogTab("run_log", "RUN_LOG", "// 没有运行记录");
-        else if (curTab == 2) renderLogTab("block_log", "BLOCK_LOG", "// 没有拦截记录，点下方按钮探测");
+        else if (curTab == 1) renderLogTab("run_log", "RUN_LOG", "没有运行记录");
+        else if (curTab == 2) renderLogTab("block_log", "BLOCK_LOG", "没有拦截记录，点下方按钮探测");
         else if (curTab == 3) renderAppsTab();
         else if (curTab == 5) renderAmiya();
         else renderSysTab();
@@ -492,7 +492,7 @@ public class MainActivity extends Activity {
         cap.setGravity(android.view.Gravity.CENTER);
         wrap.addView(cap);
 
-        TextView cap2 = tv(L("// AMIYA  ·  STILL HUNGRY", "// 阿米娅  ·  还没吃饱"), 10, C_DIM, false);
+        TextView cap2 = tv(L("AMIYA  ·  STILL HUNGRY", "阿米娅  ·  还没吃饱"), 10, C_DIM, false);
         cap2.setGravity(android.view.Gravity.CENTER);
         cap2.setPadding(0, dp(8), 0, dp(14));
         wrap.addView(cap2);
@@ -525,7 +525,7 @@ public class MainActivity extends Activity {
         android.content.SharedPreferences ps = getSharedPreferences("prts", MODE_PRIVATE);
         boolean trustOn = ps.getBoolean("trust_net", false);
 
-        TextView head = tv("// CONSOLE  ·  " + L("ALL FUNCTIONS", "全部功能"), 12, C_GREEN, true);
+        TextView head = tv("CONSOLE  ·  " + L("ALL FUNCTIONS", "全部功能"), 12, C_GREEN, true);
         head.setPadding(0, 0, 0, dp(8));
         contentBox.addView(head);
 
@@ -711,7 +711,7 @@ public class MainActivity extends Activity {
         // ---- 彩蛋：关闭罗德岛全舰防御系统 ----
         contentBox.addView(divider());
 
-        TextView eggHead = tv("// RHODES_ISLAND  ·  TOTAL_DEFENSE", 11, C_DIM, false);
+        TextView eggHead = tv("RHODES_ISLAND  ·  TOTAL_DEFENSE", 11, C_DIM, false);
         eggHead.setPadding(0, 0, 0, dp(6));
         contentBox.addView(eggHead);
 
@@ -746,7 +746,7 @@ public class MainActivity extends Activity {
             for (String s : raw.split("\n")) if (!s.trim().isEmpty()) lines.add(s);
         }
 
-        TextView head = tv("// " + label + "  (" + lines.size() + " 条)", 11, C_GREEN_D, false);
+        TextView head = tv("" + label + "  (" + lines.size() + " 条)", 11, C_GREEN_D, false);
         head.setPadding(0, 0, 0, dp(10));
         contentBox.addView(head);
 
@@ -1467,8 +1467,8 @@ public class MainActivity extends Activity {
     private void renderAppsTab() {
         // 无障碍服务状态
         boolean a11y = isA11yOn();
-        TextView st = tv(a11y ? "// A11Y: 已开启 —— 按应用切换生效中"
-                        : "// A11Y: 未开启 —— 规则不会自动生效",
+        TextView st = tv(a11y ? "A11Y: 已开启 —— 按应用切换生效中"
+                        : "A11Y: 未开启 —— 规则不会自动生效",
                 11, a11y ? C_GREEN : C_DANGER, false);
         st.setLineSpacing(dp(3), 1f);
         contentBox.addView(st);
@@ -1509,7 +1509,7 @@ public class MainActivity extends Activity {
         }
 
         List<String[]> apps = getInstalledApps();
-        TextView head = tv("// APP_RULES  (" + apps.size() + " 个应用 · " + ruleCount + " 条规则)",
+        TextView head = tv("APP_RULES  (" + apps.size() + " 个应用 · " + ruleCount + " 条规则)",
                 11, C_GREEN_D, false);
         head.setPadding(0, 0, 0, dp(8));
         contentBox.addView(head);
@@ -1630,7 +1630,7 @@ public class MainActivity extends Activity {
         boolean ok   = run && ShizukuBridge.granted();
         int space    = ShizukuBridge.userId();
 
-        TextView head = tv("// SHIZUKU_CHANNEL  (adb shell 通道)", 11, C_GREEN_D, false);
+        TextView head = tv("SHIZUKU_CHANNEL  (adb shell 通道)", 11, C_GREEN_D, false);
         head.setPadding(0, 0, 0, dp(6));
         contentBox.addView(head);
 
@@ -1684,7 +1684,7 @@ public class MainActivity extends Activity {
 
         // ---- ADS_SDK ----
         contentBox.addView(divider());
-        TextView adsHead = tv("// ADS_SDK  com.opos.ads", 11, C_GREEN_D, false);
+        TextView adsHead = tv("ADS_SDK  com.opos.ads", 11, C_GREEN_D, false);
         adsHead.setPadding(0, 0, 0, dp(6));
         contentBox.addView(adsHead);
 
@@ -1732,7 +1732,7 @@ public class MainActivity extends Activity {
                 + "  /  " + L("BLOCK", "拦截") + " " + countLines("block_log")));
         // ---- 本地 VPN 广告拦截 ----
         contentBox.addView(divider());
-        TextView vpnHead = tv("// LOCAL_VPN  ·  本地广告拦截（只接管 DNS）", 11, C_GREEN_D, false);
+        TextView vpnHead = tv("LOCAL_VPN  ·  本地广告拦截（只接管 DNS）", 11, C_GREEN_D, false);
         vpnHead.setPadding(0, 0, 0, dp(6));
         contentBox.addView(vpnHead);
         boolean vpnOn = AdBlockVpnService.running;
@@ -1781,7 +1781,7 @@ public class MainActivity extends Activity {
         startVpnTick();
 
         contentBox.addView(divider());
-        TextView sdkHead = tv("// AD_SDK_SCAN  ·  扫描已装 App 里的推广 SDK", 11, C_GREEN_D, false);
+        TextView sdkHead = tv("AD_SDK_SCAN  ·  扫描已装 App 里的推广 SDK", 11, C_GREEN_D, false);
         sdkHead.setPadding(0, 0, 0, dp(6));
         contentBox.addView(sdkHead);
         btnFull("> 扫描广告 SDK", C_GREEN, new View.OnClickListener() {
