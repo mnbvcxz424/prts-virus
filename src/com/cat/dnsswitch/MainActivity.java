@@ -343,6 +343,31 @@ public class MainActivity extends Activity {
         });
         card.addView(btnToggle);
 
+        // ---- SOS 应急入口：就挂在拦截按钮下面，出事一眼能点到 ----
+        LinearLayout sosRow = new LinearLayout(this);
+        sosRow.setOrientation(LinearLayout.HORIZONTAL);
+        sosRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        sosRow.setBackground(makeBox(C_BG, C_DANGER, 2, 2));
+        LinearLayout.LayoutParams sosLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(42));
+        sosLp.topMargin = dp(8);
+        sosRow.setLayoutParams(sosLp);
+        sosRow.setPadding(dp(12), 0, dp(12), 0);
+        TextView sosIco = tv("\u26a0", 16, C_DANGER, true);
+        sosIco.setPadding(0, 0, dp(10), 0);
+        sosRow.addView(sosIco);
+        TextView sosTxt = tv("SOS  ·  " + L("RHODES DEFENSE", "罗德岛全舰防御"), 13, C_DANGER, true);
+        sosTxt.setLetterSpacing(0.08f);
+        sosRow.addView(sosTxt, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        sosRow.addView(tv(">", 16, C_DANGER, true));
+        sosRow.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                startActivity(new android.content.Intent(MainActivity.this, SosActivity.class));
+            }
+        });
+        card.addView(sosRow);
+
         root.addView(card);
 
         // ---- Tab 栏 ----
