@@ -39,7 +39,7 @@ Write-Host "[2/7] aapt2 link"
 & "$bt\aapt2.exe" link -o "$out\base.apk" -I $jar --manifest "$root\AndroidManifest.xml" `
     "$out\res.zip" --java "$out\gen" `
     --min-sdk-version 24 --target-sdk-version 33 `
-    --version-code 20 --version-name "3.2.0"
+    --version-code 21 --version-name "3.2.1"
 if ($LASTEXITCODE -ne 0) { throw "aapt2 link failed" }
 
 Write-Host "[3/7] javac"
