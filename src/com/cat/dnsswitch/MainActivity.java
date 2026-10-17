@@ -60,6 +60,29 @@ public class MainActivity extends Activity {
     };
     private static final String[] OK_DOMAINS = { "www.baidu.com", "www.qq.com" };
 
+    /** 可选的私人 DNS 服务器 */
+    private static final String[] DNS_CHOICES = {
+            "dns.18bit.cn",
+            "dns.ipv4dns.com",
+            "dns.adguard-dns.com",
+            "dns.google",
+            "one.one.one.one"
+    };
+    private static final String[] DNS_CHOICE_NAMES = {
+            "dns.18bit.cn        · 去广告（默认）",
+            "dns.ipv4dns.com     · 备用去广告",
+            "dns.adguard-dns.com · AdGuard 去广告",
+            "dns.google          · 不过滤",
+            "one.one.one.one     · 不过滤"
+    };
+
+    /** 常见推广 SDK 的包名特征 */
+    private static final String[] AD_SDK_KEYS = {
+            "com.opos.ads", "com.bytedance.sdk", "com.qq.e", "com.umeng",
+            "cn.jpush", "com.baidu.mobads", "com.kwad", "com.tencent.gdt",
+            "com.heytap.msp", "com.miui.analytics"
+    };
+
     private Typeface mono;
     private TextView tvState;
     private TextView tvDetail;
@@ -389,10 +412,19 @@ public class MainActivity extends Activity {
         contentBox.addView(kv(L("WELCOME", "问候"), greeting()));
         contentBox.addView(kv(L("MODE", "模式"), mode));
         contentBox.addView(kv(L("SPECIFIER", "指定服务器"), spec.isEmpty() ? "(none)" : spec));
-        contentBox.addView(kv(L("PRIMARY", "主服务器"), DNS_PRIMARY));
+        contentBox.addView(kv(L("PRIMARY", "DNS 服务器"), wantedDns()));
         contentBox.addView(kv(L("BACKUP", "备用服务器"), DNS_BACKUP));
+        int probes = sp == null ? 0 : sp.getInt("st_probes", 0);
+        int blockedSum = sp == null ? 0 : sp.getInt("st_blocked", 0);
+        contentBox.addView(kv(L("STATS", "拦截统计"),
+                probes == 0 ? L("NOT_YET", "还没探测过")
+                        : (L("PROBES", "探测") + " " + probes + " " + L("TIMES", "次") + " · "
+                           + L("BLOCKED", "累计拦") + " " + blockedSum + " " + L("ITEMS", "条"))));
         contentBox.addView(kv(L("STATUS", "状态"), on ? "BLOCKING" : "IDLE"));
         contentBox.addView(kv(L("CHANNEL", "通道"), dnsPath));
+        btnFull("> 切换 DNS 服务器", C_GREEN, new View.OnClickListener() {
+            @Override public void onClick(View v) { pickDns(); }
+        });
 
         contentBox.addView(divider());
 
@@ -525,6 +557,107 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** 用户选中的 DNS（存在 pref 里），没选过就是默认 */
+    private String wantedDns() {
+        String s = sp == null ? "" : sp.getString("dns_spec", "");
+        return (s == null || s.isEmpty()) ? DNS_PRIMARY : s;
+    }
+
+    /** 切换 DNS：选完立刻生效（本来就是开着的就重写一次设置） */
+    private void pickDns() {
+        int cur = 0;
+        for (int i = 0; i < DNS_CHOICES.length; i++) {
+            if (DNS_CHOICES[i].equals(wantedDns())) { cur = i; break; }
+        }
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("选择 DNS 服务器（当前：" + DNS_CHOICES[cur] + "）")
+                .setSingleChoiceItems(DNS_CHOICE_NAMES, cur,
+                        new android.content.DialogInterface.OnClickListener() {
+                    @Override public void onClick(android.content.DialogInterface d, int which) {
+                        d.dismiss();
+                        sp.edit().putString("dns_spec", DNS_CHOICES[which]).apply();
+                        addRunLog(now() + "  DNS_SWAP  →  " + DNS_CHOICES[which]);
+                        if (isOn()) {
+                            applyDnsAsync(true);
+                        } else {
+                            toast("已选：" + DNS_CHOICES[which] + "，开启拦截后生效");
+                            renderContent();
+                        }
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void applyDnsAsync(final boolean on) {
+        toast("切换中…");
+        new Thread(new Runnable() {
+            @Override public void run() {
+                final boolean ok = applyDns(on);
+                ui.post(new Runnable() {
+                    @Override public void run() {
+                        toast(ok ? "已生效" : "切换失败，看运行日志");
+                        refresh();
+                        renderContent();
+                    }
+                });
+            }
+        }, "prts-dns").start();
+    }
+
+    /** 扫已装 App 里嵌了哪些推广 SDK（走 Shizuku，后台跑） */
+    private void scanSdk() {
+        if (!ShizukuBridge.granted()) {
+            toast("要先拿到 Shizuku 授权才能扫");
+            return;
+        }
+        toast("扫描中…可能要半分钟");
+        StringBuilder sh = new StringBuilder(
+                "for p in $(pm list packages -3 | sed 's/^package://'); do "
+                + "d=$(dumpsys package $p 2>/dev/null); ");
+        for (int i = 0; i < AD_SDK_KEYS.length; i++) {
+            sh.append("case \"$d\" in *").append(AD_SDK_KEYS[i])
+              .append("*) echo \"$p|").append(AD_SDK_KEYS[i]).append("\";; esac; ");
+        }
+        sh.append("done");
+        execAsync(sh.toString(), new Exec() {
+            @Override public void done(ShizukuBridge.Result r) {
+                if (!r.err.isEmpty() && r.out.trim().isEmpty()) {
+                    toast("扫描失败：" + r.err);
+                    return;
+                }
+                java.util.LinkedHashMap<String, java.util.ArrayList<String>> hit =
+                        new java.util.LinkedHashMap<String, java.util.ArrayList<String>>();
+                for (String line : r.out.split("\n")) {
+                    line = line.trim();
+                    if (line.isEmpty() || !line.contains("|")) continue;
+                    String[] kv2 = line.split("\\|", 2);
+                    java.util.ArrayList<String> arr = hit.get(kv2[0]);
+                    if (arr == null) { arr = new java.util.ArrayList<String>(); hit.put(kv2[0], arr); }
+                    arr.add(kv2[1]);
+                }
+                StringBuilder msg = new StringBuilder();
+                if (hit.isEmpty()) {
+                    msg.append("没扫到已知的推广 SDK。\n");
+                } else {
+                    msg.append("扫到 ").append(hit.size()).append(" 个 App 带推广 SDK：\n\n");
+                    for (String pkg : hit.keySet()) {
+                        msg.append("· ").append(pkg).append('\n')
+                           .append("   ").append(android.text.TextUtils.join(", ", hit.get(pkg)))
+                           .append("\n");
+                    }
+                }
+                msg.append("\n只查特征包名，漏报正常。");
+                addRunLog(now() + "  SDK_SCAN  →  " + hit.size() + " 个 App");
+                new android.app.AlertDialog.Builder(MainActivity.this)
+                        .setTitle("广告 SDK 扫描")
+                        .setMessage(msg.toString())
+                        .setPositiveButton("知道了", null)
+                        .show();
+            }
+        });
+    }
+
     private boolean isOn() { return "hostname".equals(getDnsMode()); }
 
     private void refresh() {
@@ -580,7 +713,7 @@ public class MainActivity extends Activity {
      *   2. Shizuku（settings put global ...）—— 没权限时的兜底
      */
     private boolean applyDns(boolean on) {
-        String spec = on ? DNS_PRIMARY : getDnsSpec();
+        String spec = on ? wantedDns() : getDnsSpec();
         String mode = on ? "hostname" : "off";
         try {
             ContentResolver cr = getContentResolver();
@@ -641,6 +774,11 @@ public class MainActivity extends Activity {
                 final String logBody = blk.toString();
 
                 appendBlockLog(logBody);
+                if (sp != null) {
+                    sp.edit().putInt("st_probes", sp.getInt("st_probes", 0) + 1)
+                             .putInt("st_blocked", sp.getInt("st_blocked", 0) + blocked)
+                             .apply();
+                }
         addRunLog(now() + "  PROBE   →  " + summary);
 
                 ui.post(new Runnable() {
@@ -1221,6 +1359,15 @@ public class MainActivity extends Activity {
         contentBox.addView(kv(L("LOG_LINES", "日志行数"),
                 L("RUN", "运行") + " " + countLines("run_log")
                 + "  /  " + L("BLOCK", "拦截") + " " + countLines("block_log")));
+        contentBox.addView(divider());
+        TextView sdkHead = tv("// AD_SDK_SCAN  ·  扫描已装 App 里的推广 SDK", 11, C_GREEN_D, false);
+        sdkHead.setPadding(0, 0, 0, dp(6));
+        contentBox.addView(sdkHead);
+        btnFull("> 扫描广告 SDK", C_GREEN, new View.OnClickListener() {
+            @Override public void onClick(View v) { scanSdk(); }
+        });
+        hint("查的是特征包名（穿山甲 / 优量汇 / 友盟 / 极光 / OPPO 推广 等），漏报正常。", C_DIM);
+
         btnFull("> 导出全部日志 (TXT)", C_GREEN, new View.OnClickListener() {
             @Override public void onClick(View v) { exportLog("all", "全部日志"); }
         });
