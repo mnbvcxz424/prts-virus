@@ -12,7 +12,7 @@ public final class AdRules {
     public static final int G_MAL   = 3;   // 恶意与诈骗
 
     public static final String[] GROUP_NAMES = {
-            "广告", "统计与追踪", "推广 SDK", "恶意与诈骗"
+            "广告", "统计与追踪", "推广组件", "恶意与诈骗"
     };
     public static final String[] GROUP_KEYS = {
             "grp_ad", "grp_track", "grp_sdk", "grp_mal"

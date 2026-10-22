@@ -679,7 +679,7 @@ public class MainActivity extends Activity {
 
         contentBox.addView(kv(L("WELCOME", "问候"), greeting()));
         contentBox.addView(kv(L("MODE", "模式"), mode));
-        contentBox.addView(kv(L("SPECIFIER", "指定服务器"), spec.isEmpty() ? "(none)" : spec));
+        contentBox.addView(kv(L("SPECIFIER", "指定服务器"), spec.isEmpty() ? L("(none)", "（无）") : spec));
         contentBox.addView(kv(L("PRIMARY", "DNS 服务器"), wantedDns()));
         contentBox.addView(kv(L("BACKUP", "备用服务器"), DNS_BACKUP));
         int probes = sp == null ? 0 : sp.getInt("st_probes", 0);
@@ -688,7 +688,7 @@ public class MainActivity extends Activity {
                 probes == 0 ? L("NOT_YET", "还没探测过")
                         : (L("PROBES", "探测") + " " + probes + " " + L("TIMES", "次") + " · "
                            + L("BLOCKED", "累计拦") + " " + blockedSum + " " + L("ITEMS", "条"))));
-        contentBox.addView(kv(L("STATUS", "状态"), on ? "BLOCKING" : "IDLE"));
+        contentBox.addView(kv(L("STATUS", "状态"), on ? L("BLOCKING", "拦截中") : L("IDLE", "空闲")));
         contentBox.addView(kv(L("CHANNEL", "通道"), dnsPath));
         btnFull("> 切换 DNS 服务器", C_GREEN, new View.OnClickListener() {
             @Override public void onClick(View v) { pickDns(); }
@@ -1432,7 +1432,7 @@ public class MainActivity extends Activity {
     private Boolean cnCache;
     boolean isCn() {
         if (cnCache == null) {
-            cnCache = getSharedPreferences("prts", MODE_PRIVATE).getBoolean("cn", false);
+            cnCache = getSharedPreferences("prts", MODE_PRIVATE).getBoolean("cn", true);
         }
         return cnCache;
     }
@@ -1650,9 +1650,9 @@ public class MainActivity extends Activity {
         contentBox.addView(kv(L("SERVER", "服务"), run ? L("RUNNING", "运行中") : L("STOPPED", "已停止")));
         contentBox.addView(kv(L("PERMISSION", "授权"),
                 ok ? L("GRANTED", "已授权") : (run ? L("PENDING", "待授权") : "N/A")));
-        contentBox.addView(kv(L("VERSION", "版本"), run ? ("v" + ShizukuBridge.version()) : "(none)"));
-        contentBox.addView(kv(L("UID", "用户号"), ok ? String.valueOf(ShizukuBridge.uid()) : "(none)"));
-        contentBox.addView(kv(L("SPACE", "空间"), space == 0 ? L("MAIN", "本空间") : ("USER_" + space)));
+        contentBox.addView(kv(L("VERSION", "版本"), run ? ("v" + ShizukuBridge.version()) : L("(none)", "（无）")));
+        contentBox.addView(kv(L("UID", "用户号"), ok ? String.valueOf(ShizukuBridge.uid()) : L("(none)", "（无）")));
+        contentBox.addView(kv(L("SPACE", "空间"), space == 0 ? L("MAIN", "本空间") : (L("USER_", "用户空间 ") + space)));
 
         if (space != 0) {
             hint("当前这份跑在分身/壶中界空间（user " + space + "）。\n" +

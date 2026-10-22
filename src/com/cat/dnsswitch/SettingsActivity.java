@@ -93,7 +93,7 @@ public class SettingsActivity extends Activity {
         top.setOrientation(LinearLayout.HORIZONTAL);
         top.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView title = tv("> SETTINGS", 17, C_GREEN, true);
+        TextView title = tv(L("> SETTINGS", "> 设置"), 17, C_GREEN, true);
         title.setLetterSpacing(0.08f);
         title.setLayoutParams(new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
@@ -206,11 +206,11 @@ public class SettingsActivity extends Activity {
                 + "Android 的限制。", C_DIM));
 
         // ---------- 自定义拦截（v3.7.0；v3.7.1 起加授权门）----------
-        box.addView(section("CUSTOM · 自定义拦截"));
+        box.addView(section("自定义拦截"));
         boolean canCustom = false;
         try {
             canCustom = License.canUseCustom(this);
-            box.addView(kv("CUSTOM_ACCESS · 授权", License.status(this)));
+            box.addView(kv("授权", License.status(this)));
             if (!canCustom) box.addView(hint(License.reason(this), C_DANGER));
             if (License.OWNER_ID == null || License.OWNER_ID.isEmpty()) {
                 String did = License.deviceId(this);
@@ -231,8 +231,8 @@ public class SettingsActivity extends Activity {
         } else {
             final int cCount = AdRules.customCount();
             final boolean cOn = AdRules.customOn();
-            box.addView(kv("CUSTOM_RULE · 规则条数", cCount + " 条"));
-            box.addView(kv("CUSTOM_STATE · 开关", cOn ? L("ON", "开") : L("OFF", "关")));
+            box.addView(kv("规则条数", cCount + " 条"));
+            box.addView(kv("开关", cOn ? L("ON", "开") : L("OFF", "关")));
             btn("> 编辑自定义名单", C_GREEN_D, new View.OnClickListener() {
                 @Override public void onClick(View v) {
                     editCustom();
@@ -253,10 +253,10 @@ public class SettingsActivity extends Activity {
         }
 
         // ---------- 悬浮窗与保活 ----------
-        box.addView(section("FLOAT_KEEP · 悬浮窗与保活"));
+        box.addView(section("悬浮窗与保活"));
         final boolean floatOn = ps.getBoolean(KeepAlive.KEY_FLOAT, true);
         final boolean canDraw = FloatWin.canDraw(this);
-        box.addView(kv("FLOAT_WIN · 悬浮窗", (floatOn && canDraw)
+        box.addView(kv("悬浮窗", (floatOn && canDraw)
                 ? L("ON", "开") : L("OFF", "关")));
         if (floatOn && !canDraw) {
             box.addView(hint("悬浮窗开关是开的，但系统还没给「显示在其他应用上层」权限。", C_DANGER));
@@ -290,8 +290,8 @@ public class SettingsActivity extends Activity {
 
         final boolean keepOn = ps.getBoolean(KeepAlive.KEY_KEEP, true);
         final boolean batOk = KeepAlive.ignoringBattery(this);
-        box.addView(kv("ANTI_KILL · 强力保活", keepOn ? L("ON", "开") : L("OFF", "关")));
-        box.addView(kv("BATTERY · 电池优化", batOk ? "已豁免" : "未豁免"));
+        box.addView(kv("强力保活", keepOn ? L("ON", "开") : L("OFF", "关")));
+        box.addView(kv("电池优化", batOk ? "已豁免" : "未豁免"));
         btn(keepOn ? "> 关闭强力保活" : "> 打开强力保活",
                 keepOn ? C_DANGER : C_GREEN, new View.OnClickListener() {
                     @Override public void onClick(View v) {
@@ -332,9 +332,9 @@ public class SettingsActivity extends Activity {
         box.addView(kv(L("SERVER", "服务"), run ? L("RUNNING", "运行中") : L("STOPPED", "已停止")));
         box.addView(kv(L("PERMISSION", "授权"),
                 ok ? L("GRANTED", "已授权") : (run ? L("PENDING", "待授权") : "N/A")));
-        box.addView(kv(L("VERSION", "版本"), run ? ("v" + ShizukuBridge.version()) : "(none)"));
-        box.addView(kv(L("UID", "用户号"), ok ? String.valueOf(ShizukuBridge.uid()) : "(none)"));
-        box.addView(kv(L("SPACE", "空间"), space == 0 ? L("MAIN", "本空间") : ("USER_" + space)));
+        box.addView(kv(L("VERSION", "版本"), run ? ("v" + ShizukuBridge.version()) : L("(none)", "（无）")));
+        box.addView(kv(L("UID", "用户号"), ok ? String.valueOf(ShizukuBridge.uid()) : L("(none)", "（无）")));
+        box.addView(kv(L("SPACE", "空间"), space == 0 ? L("MAIN", "本空间") : (L("USER_", "用户空间 ") + space)));
 
         if (space != 0) {
             box.addView(hint("当前这份跑在分身/壶中界空间（user " + space + "）。\n" +
@@ -452,7 +452,7 @@ public class SettingsActivity extends Activity {
 
     /** 中文模式：设置页里「一键转中文」按钮控制的全局开关 */
     private boolean isCn() {
-        return getSharedPreferences("prts", MODE_PRIVATE).getBoolean("cn", false);
+        return getSharedPreferences("prts", MODE_PRIVATE).getBoolean("cn", true);
     }
     private String L(String en, String zh) { return isCn() ? zh : en; }
 
