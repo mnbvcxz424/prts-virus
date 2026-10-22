@@ -1,10 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.cat.dnsswitch"
-    android:versionCode="33"
-    android:versionName="3.4.2">
+    android:versionCode="39"
+    android:versionName="3.6.2">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="33" />
+
+    <!-- 悬浮窗（用户手动授权） -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- 申请电池优化白名单，避免被系统冻结 -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- 判断前台是不是游戏（可用 adb 直接给：appops set com.cat.dnsswitch GET_USAGE_STATS allow） -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+
+    <!-- 开机自恢复 -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- 修改系统设置（私人 DNS）需要此权限，只能通过 adb 一次性授权 -->
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
@@ -83,6 +93,31 @@
                 <action android:name="android.net.VpnService" />
             </intent-filter>
         </service>
+
+        <!-- 悬浮窗：显示拦截计数，可拖动 -->
+        <service
+            android:name=".FloatWin"
+            android:exported="false" />
+
+        <!-- 被清掉之后自己爬起来 / 开机恢复 -->
+        <receiver
+            android:name=".ReviveReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="com.cat.dnsswitch.REVIVE" />
+            </intent-filter>
+        </receiver>
+
+        <!-- 每天 00:00 的午夜关怀 -->
+        <receiver
+            android:name=".NightWatchReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.cat.dnsswitch.NIGHT_CHECK" />
+            </intent-filter>
+        </receiver>
 
         <service
             android:name=".AppRuleService"

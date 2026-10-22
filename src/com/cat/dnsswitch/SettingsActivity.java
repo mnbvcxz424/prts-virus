@@ -204,6 +204,69 @@ public class SettingsActivity extends Activity {
         box.addView(hint("在信任的 Wi-Fi 上（比如家里）暂停拦截。读 Wi-Fi 名字需要定位权限，"
                 + "Android 的限制。", C_DIM));
 
+        // ---------- 悬浮窗与保活 ----------
+        box.addView(section("FLOAT_KEEP · 悬浮窗与保活"));
+        final boolean floatOn = ps.getBoolean(KeepAlive.KEY_FLOAT, true);
+        final boolean canDraw = FloatWin.canDraw(this);
+        box.addView(kv("FLOAT_WIN · 悬浮窗", (floatOn && canDraw)
+                ? L("ON", "开") : L("OFF", "关")));
+        if (floatOn && !canDraw) {
+            box.addView(hint("悬浮窗开关是开的，但系统还没给「显示在其他应用上层」权限。", C_DANGER));
+        }
+        btn(floatOn ? "> 关闭悬浮窗" : "> 打开悬浮窗（显示拦截计数）",
+                floatOn ? C_DANGER : C_GREEN, new View.OnClickListener() {
+                    @Override public void onClick(View v) {
+                        if (floatOn) {
+                            ps.edit().putBoolean(KeepAlive.KEY_FLOAT, false).apply();
+                            FloatWin.stop(SettingsActivity.this);
+                            render();
+                            return;
+                        }
+                        if (!FloatWin.canDraw(SettingsActivity.this)) {
+                            toast("请先允许「显示在其他应用上层」");
+                            try {
+                                startActivity(new Intent(
+                                        android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                        android.net.Uri.parse("package:" + getPackageName())));
+                            } catch (Exception ignored) {
+                            }
+                            return;
+                        }
+                        ps.edit().putBoolean(KeepAlive.KEY_FLOAT, true).apply();
+                        FloatWin.start(SettingsActivity.this);
+                        render();
+                    }
+                });
+        box.addView(hint("悬浮窗会显示「🛡 已拦截条数」：可以拖到顺手的位置，点一下进 App，"
+                + "长按就隐藏。开机后会自动恢复。", C_DIM));
+
+        final boolean keepOn = ps.getBoolean(KeepAlive.KEY_KEEP, true);
+        final boolean batOk = KeepAlive.ignoringBattery(this);
+        box.addView(kv("ANTI_KILL · 强力保活", keepOn ? L("ON", "开") : L("OFF", "关")));
+        box.addView(kv("BATTERY · 电池优化", batOk ? "已豁免" : "未豁免"));
+        btn(keepOn ? "> 关闭强力保活" : "> 打开强力保活",
+                keepOn ? C_DANGER : C_GREEN, new View.OnClickListener() {
+                    @Override public void onClick(View v) {
+                        ps.edit().putBoolean(KeepAlive.KEY_KEEP, !keepOn).apply();
+                        if (!keepOn) {
+                            KeepAlive.requestIgnoreBattery(SettingsActivity.this);
+                        } else {
+                            KeepAlive.cancelRevive(SettingsActivity.this);
+                        }
+                        render();
+                    }
+                });
+        if (!batOk) {
+            btn("> 申请电池优化白名单", C_GREEN_D, new View.OnClickListener() {
+                @Override public void onClick(View v) {
+                    KeepAlive.requestIgnoreBattery(SettingsActivity.this);
+                }
+            });
+        }
+        box.addView(hint("开了保活：被系统清掉、或者被划掉最近任务之后，会自动把拦截拉回来；"
+                + "同时申请电池白名单，系统不再随意冻结本应用。"
+                + "国产 ROM 还建议去「设置 → 应用 → 自启动」允许本应用。", C_DIM));
+
         // ---------- ROOT ----------
         box.addView(section("ROOT"));
         box.addView(kv(L("STATUS", "状态"), L("NOT_AVAILABLE", "不可用")));

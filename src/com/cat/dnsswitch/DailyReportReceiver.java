@@ -41,7 +41,7 @@ public class DailyReportReceiver extends BroadcastReceiver {
                 body = "跑了 " + q + " 次查询，一条广告都没拦到。今天挺干净。";
             } else {
                 title = "普瑞赛斯 · 今日拦截 " + d + " 条";
-                body = "博士，今天为您挡下了 " + d + " 条广告。累计 " + total + " 条。";
+                body = "博士，今天挡下了 " + d + " 条广告。累计 " + total + " 条。";
             }
 
             NotificationManager nm = (NotificationManager)

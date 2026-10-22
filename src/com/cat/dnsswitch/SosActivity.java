@@ -31,7 +31,7 @@ import java.util.Set;
 /**
  * 罗德岛全舰防御系统 · 终端安全
  *
- * 先扫描所有进程 → 按可疑度分三级 → 再由你决定停谁（不再无脑全停）
+ * 先扫描所有进程 → 按可疑度分三级 → 再由博士决定停谁（不再无脑全停）
  *
  * 判定规则（写死在这里，界面上也会说明）：
  *   极高威胁：进程名命中推广/追踪 SDK 特征，或者它本来在「隐藏后台」名单里却还活着
@@ -144,7 +144,7 @@ public class SosActivity extends Activity {
         title.setPadding(0, dp(10), 0, 0);
         box.addView(title);
 
-        TextView sub = tv("保卫您终端的安全", 12, C_GREEN, false);
+        TextView sub = tv("保卫博士的终端", 12, C_GREEN, false);
         sub.setPadding(0, dp(4), 0, dp(2));
         box.addView(sub);
 
@@ -191,7 +191,7 @@ public class SosActivity extends Activity {
         if (!scanned) {
             box.addView(hint("还没扫描过。点上面按钮，猫猫会列出所有进程再分级。\n"
                     + "判定规则：\n"
-                    + "  极高 = 命中推广/追踪 SDK 特征，或本来被你隐藏了却还活着\n"
+                    + "  极高 = 命中推广/追踪 SDK 特征，或本来被博士隐藏了却还活着\n"
                     + "  中等 = 第三方 App 且不在前台\n"
                     + "  疑无 = 系统进程 / 当前前台 / 没命中任何特征", C_DIM));
         } else {

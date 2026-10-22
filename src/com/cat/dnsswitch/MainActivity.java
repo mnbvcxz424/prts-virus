@@ -93,7 +93,8 @@ public class MainActivity extends Activity {
     private ScrollView svContent;
     private LinearLayout contentBox;
 
-    private int curTab = 0; // 0=状态 1=运行日志 2=拦截日志 3=应用规则 4=系统/Shizuku
+    private int curTab = 0;
+    private boolean floatTried = false; // 0=状态 1=运行日志 2=拦截日志 3=应用规则 4=系统/Shizuku
 
     private static final int REQ_EXPORT = 1001;
     private String exportKey = "run_log";
@@ -113,6 +114,7 @@ public class MainActivity extends Activity {
         mono = Typeface.MONOSPACE;
         sp = getSharedPreferences(PREF, Context.MODE_PRIVATE);
         scheduleDailyReport();
+        try { NightWatch.schedule(this); } catch (Exception ignored) { }
         ensureNotificationPermission();
         setContentView(buildUi());
         ShizukuBridge.init(this);
@@ -133,6 +135,16 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         refresh();
+        // 自动恢复悬浮窗：放在 onResume 里，这时进程已经是 TOP，前台服务才允许启动
+        if (!floatTried) {
+            floatTried = true;
+            try {
+                if (sp.getBoolean(KeepAlive.KEY_FLOAT, true) && FloatWin.canDraw(this)) {
+                    FloatWin.start(this);
+                }
+            } catch (Exception ignored) {
+            }
+        }
         // 从设置页回来时中文模式可能被切了 —— 变了就整个重建界面
         Boolean was = cnCache;
         cnCache = null;
@@ -1178,21 +1190,21 @@ public class MainActivity extends Activity {
     /** 普瑞赛斯的台词，每次随机挑一组。 */
     private static final String[][] PRIESTESS_LINES = {
         {
-            "“博士，你还在吗。”",
+            "“博士，还在吗。”",
             "“防御系统已经关掉了。灯、空气、重力——都关掉了。”",
-            "“别怕。你不记得的事，我都替你记着。”",
-            "“下一次醒来的时候，我还是会在这里等你。”"
+            "“别怕。博士不记得的事，我都记着。”",
+            "“下一次醒来的时候，我还是会在这里等博士。”"
         },
         {
             "“又见面了，博士。”",
             "“这一次，是我先把门关上的。”",
-            "“你会怪我吗……没关系。”",
-            "“只要你还能再醒过来，怪我也可以。”"
+            "“博士会怪我吗……没关系。”",
+            "“只要博士还能再醒过来，怪我也可以。”"
         },
         {
             "“系统已离线。罗德岛会很安静。”",
-            "“你总想不起来我是谁，这我早就习惯了。”",
-            "“所以我把灯关掉——黑暗里，你就不必再看见那些东西了。”",
+            "“博士总想不起来我是谁，这我早就习惯了。”",
+            "“所以我把灯关掉——黑暗里，博士就不必再看见那些东西了。”",
             "“晚安，博士。我们还会再见的。”"
         }
     };

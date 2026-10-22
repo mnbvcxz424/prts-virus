@@ -161,15 +161,42 @@ public class AdBlockVpnService extends VpnService implements Runnable {
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         String act = intent == null ? ACTION_START : intent.getAction();
         if (ACTION_STOP.equals(act)) {
+            // 用户主动关：记下来，这样被销毁时不会又自己爬起来
+            KeepAlive.prefs(this).edit().putBoolean(KeepAlive.KEY_WANT, false).apply();
+            KeepAlive.cancelRevive(this);
+            FloatWin.stop(this);
             stopSelf();
             return START_NOT_STICKY;
         }
-        if (running) return START_STICKY;
+        KeepAlive.prefs(this).edit().putBoolean(KeepAlive.KEY_WANT, true).apply();
+        KeepAlive.cancelRevive(this);
+        if (running) {
+            syncFloat();
+            return START_STICKY;
+        }
         startForeground(1, buildNotification());
         worker = new Thread(this, "prts-vpn");
         running = true;
         worker.start();
+        syncFloat();
         return START_STICKY;
+    }
+
+    /** 按设置决定要不要把悬浮窗挂上 */
+    private void syncFloat() {
+        try {
+            if (KeepAlive.prefs(this).getBoolean(KeepAlive.KEY_FLOAT, true)
+                    && FloatWin.canDraw(this)) {
+                FloatWin.start(this);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    @Override public void onTaskRemoved(Intent rootIntent) {
+        // 用户从"最近任务"里划掉：立刻预约复活（划掉 ≠ 主动关）
+        KeepAlive.scheduleRevive(this, 1000);
+        super.onTaskRemoved(rootIntent);
     }
 
     @Override public void onRevoke() {
@@ -185,6 +212,8 @@ public class AdBlockVpnService extends VpnService implements Runnable {
         try { if (up != null) up.close(); } catch (Exception ignored) {}
         tun = null; up = null;
         stopForeground(true);
+        // 正常停止时 KEY_WANT 已被置 false，这里不会复活；被系统杀掉时才会
+        KeepAlive.scheduleRevive(this, 3000);
         super.onDestroy();
     }
 
