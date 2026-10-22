@@ -205,29 +205,52 @@ public class SettingsActivity extends Activity {
         box.addView(hint("在信任的 Wi-Fi 上（比如家里）暂停拦截。读 Wi-Fi 名字需要定位权限，"
                 + "Android 的限制。", C_DIM));
 
-        // ---------- 自定义拦截（v3.7.0）----------
+        // ---------- 自定义拦截（v3.7.0；v3.7.1 起加授权门）----------
         box.addView(section("CUSTOM · 自定义拦截"));
-        final int cCount = AdRules.customCount();
-        final boolean cOn = AdRules.customOn();
-        box.addView(kv("CUSTOM_RULE · 规则条数", cCount + " 条"));
-        box.addView(kv("CUSTOM_STATE · 开关", cOn ? L("ON", "开") : L("OFF", "关")));
-        btn("> 编辑自定义名单", C_GREEN_D, new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                editCustom();
+        boolean canCustom = false;
+        try {
+            canCustom = License.canUseCustom(this);
+            box.addView(kv("CUSTOM_ACCESS · 授权", License.status(this)));
+            if (!canCustom) box.addView(hint(License.reason(this), C_DANGER));
+            if (License.OWNER_ID == null || License.OWNER_ID.isEmpty()) {
+                String did = License.deviceId(this);
+                box.addView(hint("BUILD_ID · " + did, C_DIM));
+                android.util.Log.i("PRTS_LICENSE", "deviceId=" + did
+                        + " owner=" + License.isOwner(this) + " root=" + License.hasRoot());
             }
-        });
-        btn(cOn ? "> 暂停自定义拦截" : "> 启用自定义拦截",
-                cOn ? C_DANGER : C_GREEN, new View.OnClickListener() {
-                    @Override public void onClick(View v) {
-                        ps.edit().putBoolean(AdRules.KEY_CUSTOM_ON, !cOn).apply();
-                        AdRules.loadCustom(ps);
-                        AdBlockVpnService.resetGroupsCache();
-                        render();
-                    }
-                });
-        box.addView(hint("每行一个域名，可以整段粘贴，# 开头的行会被忽略。"
-                + "写 doubleclick.net 就能连 ad.doubleclick.net 一起拦。"
-                + "只在 VPN 模式下生效 —— 私人 DNS 的名单在服务器上，改不了。", C_DIM));
+        } catch (Exception e) {
+            box.addView(hint("授权检查失败：" + e, C_DANGER));
+        }
+        if (!canCustom) {
+            btn("> 重新检测授权（ROOT）", C_GREEN_D, new View.OnClickListener() {
+                @Override public void onClick(View v) {
+                    License.resetRootCache();
+                    render();
+                }
+            });
+        } else {
+            final int cCount = AdRules.customCount();
+            final boolean cOn = AdRules.customOn();
+            box.addView(kv("CUSTOM_RULE · 规则条数", cCount + " 条"));
+            box.addView(kv("CUSTOM_STATE · 开关", cOn ? L("ON", "开") : L("OFF", "关")));
+            btn("> 编辑自定义名单", C_GREEN_D, new View.OnClickListener() {
+                @Override public void onClick(View v) {
+                    editCustom();
+                }
+            });
+            btn(cOn ? "> 暂停自定义拦截" : "> 启用自定义拦截",
+                    cOn ? C_DANGER : C_GREEN, new View.OnClickListener() {
+                        @Override public void onClick(View v) {
+                            ps.edit().putBoolean(AdRules.KEY_CUSTOM_ON, !cOn).apply();
+                            AdRules.loadCustom(ps);
+                            AdBlockVpnService.resetGroupsCache();
+                            render();
+                        }
+                    });
+            box.addView(hint("每行一个域名，可以整段粘贴，# 开头的行会被忽略。"
+                    + "写 doubleclick.net 就能连 ad.doubleclick.net 一起拦。"
+                    + "只在 VPN 模式下生效 —— 私人 DNS 的名单在服务器上，改不了。", C_DIM));
+        }
 
         // ---------- 悬浮窗与保活 ----------
         box.addView(section("FLOAT_KEEP · 悬浮窗与保活"));
