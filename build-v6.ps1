@@ -39,16 +39,25 @@ Write-Host "[2/7] aapt2 link"
 & "$bt\aapt2.exe" link -o "$out\base.apk" -I $jar --manifest "$root\AndroidManifest.xml" `
     "$out\res.zip" --java "$out\gen" `
     --min-sdk-version 24 --target-sdk-version 33 `
-    --version-code 39 --version-name "3.6.2"
+    --version-code 40 --version-name "3.7.0"
 if ($LASTEXITCODE -ne 0) { throw "aapt2 link failed" }
 
 Write-Host "[3/7] javac"
 $srcs = @()
 $srcs += (Get-ChildItem "$out\gen" -Recurse -Filter *.java | ForEach-Object { $_.FullName })
 $srcs += (Get-ChildItem "$root\src" -Recurse -Filter *.java | ForEach-Object { $_.FullName })
-& "$jdk\javac.exe" -encoding UTF-8 -source 8 -target 8 -nowarn `
-    -bootclasspath $jar -classpath $cp -d "$out\classes" $srcs
-if ($LASTEXITCODE -ne 0) { throw "javac failed" }
+# javac 会往 stderr 打「注: 使用了已过时的 API」，在 Stop 模式会被当成致命错误。
+# 所以先降级、把输出收进变量：成功就丢掉，失败才全部打印。
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+$javacOut = & "$jdk\javac.exe" -encoding UTF-8 -source 8 -target 8 -nowarn `
+    -bootclasspath $jar -classpath $cp -d "$out\classes" $srcs 2>&1
+$javacCode = $LASTEXITCODE
+$ErrorActionPreference = $prevEap
+if ($javacCode -ne 0) {
+    $javacOut | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+    throw "javac failed"
+}
 
 Write-Host "[4/7] d8"
 $cls = (Get-ChildItem "$out\classes" -Recurse -Filter *.class | ForEach-Object { $_.FullName })

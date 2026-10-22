@@ -158,6 +158,7 @@ public class SettingsActivity extends Activity {
         // ---------- 拦截过滤器 ----------
         box.addView(section(L("FILTERS", "过滤器")));
         final android.content.SharedPreferences ps = getSharedPreferences("prts", MODE_PRIVATE);
+        AdRules.loadCustom(ps);
         for (int gi = 0; gi < 4; gi++) {
             final String key = AdRules.GROUP_KEYS[gi];
             final boolean on = ps.getBoolean(key, true);
@@ -203,6 +204,30 @@ public class SettingsActivity extends Activity {
         });
         box.addView(hint("在信任的 Wi-Fi 上（比如家里）暂停拦截。读 Wi-Fi 名字需要定位权限，"
                 + "Android 的限制。", C_DIM));
+
+        // ---------- 自定义拦截（v3.7.0）----------
+        box.addView(section("CUSTOM · 自定义拦截"));
+        final int cCount = AdRules.customCount();
+        final boolean cOn = AdRules.customOn();
+        box.addView(kv("CUSTOM_RULE · 规则条数", cCount + " 条"));
+        box.addView(kv("CUSTOM_STATE · 开关", cOn ? L("ON", "开") : L("OFF", "关")));
+        btn("> 编辑自定义名单", C_GREEN_D, new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                editCustom();
+            }
+        });
+        btn(cOn ? "> 暂停自定义拦截" : "> 启用自定义拦截",
+                cOn ? C_DANGER : C_GREEN, new View.OnClickListener() {
+                    @Override public void onClick(View v) {
+                        ps.edit().putBoolean(AdRules.KEY_CUSTOM_ON, !cOn).apply();
+                        AdRules.loadCustom(ps);
+                        AdBlockVpnService.resetGroupsCache();
+                        render();
+                    }
+                });
+        box.addView(hint("每行一个域名，可以整段粘贴，# 开头的行会被忽略。"
+                + "写 doubleclick.net 就能连 ad.doubleclick.net 一起拦。"
+                + "只在 VPN 模式下生效 —— 私人 DNS 的名单在服务器上，改不了。", C_DIM));
 
         // ---------- 悬浮窗与保活 ----------
         box.addView(section("FLOAT_KEEP · 悬浮窗与保活"));
@@ -457,6 +482,44 @@ public class SettingsActivity extends Activity {
                 && r[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
             addCurrentWifi();
         }
+    }
+
+    /** 编辑自定义拦截名单（多行输入，支持整段粘贴） */
+    private void editCustom() {
+        final android.content.SharedPreferences sp = getSharedPreferences("prts", MODE_PRIVATE);
+        final android.widget.EditText et = new android.widget.EditText(this);
+        et.setText(AdRules.customRaw());
+        et.setHint("example.com\n# 以 # 开头是注释，会被忽略");
+        et.setGravity(Gravity.TOP | Gravity.START);
+        et.setTypeface(Typeface.MONOSPACE);
+        et.setTextSize(13f);
+        et.setMinLines(6);
+        int dp = (int) (getResources().getDisplayMetrics().density * 12f);
+        android.widget.LinearLayout wrap = new android.widget.LinearLayout(this);
+        wrap.setOrientation(android.widget.LinearLayout.VERTICAL);
+        wrap.setPadding(dp, dp / 2, dp, 0);
+        wrap.addView(et, new android.widget.LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp * 18));
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("自定义拦截名单")
+                .setView(wrap)
+                .setPositiveButton("保存", new android.content.DialogInterface.OnClickListener() {
+                    @Override public void onClick(android.content.DialogInterface d, int w) {
+                        String[] list = AdRules.parse(et.getText().toString());
+                        StringBuilder sb = new StringBuilder();
+                        for (int i = 0; i < list.length; i++) {
+                            if (i > 0) sb.append('\n');
+                            sb.append(list[i]);
+                        }
+                        sp.edit().putString(AdRules.KEY_CUSTOM, sb.toString()).apply();
+                        AdRules.loadCustom(sp);
+                        AdBlockVpnService.resetGroupsCache();
+                        toast("已保存 " + list.length + " 条规则");
+                        render();
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
     }
 
     private TextView section(String s) {

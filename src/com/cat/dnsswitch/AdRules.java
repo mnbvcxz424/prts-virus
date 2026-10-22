@@ -108,6 +108,96 @@ public final class AdRules {
         enabledCache = en;
     }
 
+    // ==================== 自定义拦截（v3.7.0）====================
+    // 用户自己加的域名。和内置四组相互独立：内置组可以整组关掉，
+    // 自定义名单有自己的开关；匹配规则同样是「后缀匹配」。
+
+    public static final String KEY_CUSTOM    = "custom_rules";
+    public static final String KEY_CUSTOM_ON = "custom_on";
+
+    private static volatile String[] custom = new String[0];
+    private static volatile boolean customOn = true;
+
+    public static boolean customOn() { return customOn; }
+    public static int customCount() { return custom.length; }
+    public static String[] customList() { return custom.clone(); }
+
+    /** 当前名单（每行一个），给编辑框用 */
+    public static String customRaw() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < custom.length; i++) {
+            if (i > 0) sb.append('\n');
+            sb.append(custom[i]);
+        }
+        return sb.toString();
+    }
+
+    /** 从 prefs 重新载入。VPN 服务和设置页都调它 */
+    public static void loadCustom(android.content.SharedPreferences sp) {
+        try {
+            customOn = sp.getBoolean(KEY_CUSTOM_ON, true);
+            custom = parse(sp.getString(KEY_CUSTOM, ""));
+        } catch (Exception e) {
+            customOn = true;
+            custom = new String[0];
+        }
+    }
+
+    /**
+     * 规范化一行输入：
+     * 去掉 http(s)://、路径、端口、user@、前后点号，转小写，支持 # 注释。
+     * 不合法（比如没点号、带空格）返回 null。
+     */
+    public static String normalize(String line) {
+        if (line == null) return null;
+        String s = line.trim();
+        if (s.isEmpty() || s.startsWith("#")) return null;
+        int hash = s.indexOf('#');
+        if (hash > 0) s = s.substring(0, hash).trim();
+        int p = s.indexOf("://");
+        if (p >= 0) s = s.substring(p + 3);
+        int slash = s.indexOf('/');
+        if (slash >= 0) s = s.substring(0, slash);
+        int colon = s.indexOf(':');
+        if (colon >= 0) s = s.substring(0, colon);
+        int at = s.indexOf('@');
+        if (at >= 0) s = s.substring(at + 1);
+        s = s.trim().toLowerCase(java.util.Locale.US);
+        while (s.startsWith(".")) s = s.substring(1);
+        while (s.endsWith(".")) s = s.substring(0, s.length() - 1);
+        if (s.length() < 4 || s.indexOf('.') < 0) return null;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+                    || c == '.' || c == '-')) return null;
+        }
+        return s;
+    }
+
+    /** 解析多行文本成去重后的域名数组（也吃逗号、分号分隔） */
+    public static String[] parse(String raw) {
+        if (raw == null) return new String[0];
+        java.util.LinkedHashSet<String> set = new java.util.LinkedHashSet<String>();
+        String[] lines = raw.split("[\\r\\n,;]+");
+        for (int i = 0; i < lines.length; i++) {
+            String d = normalize(lines[i]);
+            if (d != null) set.add(d);
+        }
+        return set.toArray(new String[0]);
+    }
+
+    /** 是否命中自定义名单（后缀匹配：写 xx.com 能拦 a.xx.com） */
+    public static boolean isBlockedCustom(String host) {
+        if (!customOn || host == null) return false;
+        String h = host.toLowerCase(java.util.Locale.US);
+        String[] list = custom;
+        for (int i = 0; i < list.length; i++) {
+            String r = list[i];
+            if (h.equals(r) || h.endsWith("." + r)) return true;
+        }
+        return false;
+    }
+
     /**
      * 是否该拦。
      * @param host 域名（小写）
@@ -116,6 +206,7 @@ public final class AdRules {
     public static boolean isBlocked(String host, boolean[] enabled) {
         if (host == null) return false;
         String h = host.toLowerCase();
+        if (isBlockedCustom(h)) return true;
         for (int g = 0; g < GROUPS.length; g++) {
             if (enabled != null && g < enabled.length && !enabled[g]) continue;
             String[] list = GROUPS[g];

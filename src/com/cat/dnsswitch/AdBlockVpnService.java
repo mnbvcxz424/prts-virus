@@ -72,6 +72,8 @@ public class AdBlockVpnService extends VpnService implements Runnable {
             android.content.SharedPreferences sp = appCtx.getSharedPreferences(
                     "prts", android.content.Context.MODE_PRIVATE);
             for (int i = 0; i < 4; i++) g[i] = sp.getBoolean(AdRules.GROUP_KEYS[i], true);
+            // 自定义名单跟着一起刷新（用户在设置页改完 5 秒内生效）
+            AdRules.loadCustom(sp);
         } catch (Exception ignored) {
         }
         groupsCache = g;
