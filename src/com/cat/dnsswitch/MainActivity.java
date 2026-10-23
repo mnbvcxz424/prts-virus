@@ -120,6 +120,7 @@ public class MainActivity extends Activity {
         ShizukuBridge.init(this);
         ShizukuBridge.addListener(shizukuCb);
         refresh();
+        try { DnsGuard.checkAsync(this); } catch (Exception ignored) { }
         addRunLog("APP 启动");
         ui.postDelayed(new Runnable() {
             @Override public void run() { toast(greeting()); }

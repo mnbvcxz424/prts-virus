@@ -205,6 +205,38 @@ public class SettingsActivity extends Activity {
         box.addView(hint("在信任的 Wi-Fi 上（比如家里）暂停拦截。读 Wi-Fi 名字需要定位权限，"
                 + "Android 的限制。", C_DIM));
 
+        // ---------- DoT 健康保护（v3.7.4）----------
+        box.addView(section("网络保护"));
+        final boolean dgOn = DnsGuard.autoOn(this);
+        box.addView(kv("自动保护", dgOn ? "开" : "关"));
+        box.addView(kv("上次检测", DnsGuard.lastResult(this)));
+        if (DnsGuard.autoOff(this)) {
+            box.addView(hint("上次因为 DoT 服务器连不上，拦截被自动关掉了 —— "
+                    + "这是为了保护你的网络。确认服务器正常后可以重新开启拦截。", C_DANGER));
+        }
+        btn("> 立即检测网络", C_GREEN_D, new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                toast("检测中…");
+                new Thread(new Runnable() {
+                    @Override public void run() {
+                        try { DnsGuard.checkNow(getApplicationContext()); } catch (Exception ignored) { }
+                        runOnUiThread(new Runnable() {
+                            @Override public void run() { render(); }
+                        });
+                    }
+                }, "prts-dotguard-ui").start();
+            }
+        });
+        btn(dgOn ? "> 关闭自动保护" : "> 开启自动保护", dgOn ? C_DANGER : C_GREEN,
+                new View.OnClickListener() {
+                    @Override public void onClick(View v) {
+                        DnsGuard.setAuto(SettingsActivity.this, !dgOn);
+                        render();
+                    }
+                });
+        box.addView(hint("开启后，如果连续 2 次解析不了域名，会自动关掉拦截，"
+                + "保证手机还能上网。宁可暂时不拦广告，也不能让你断网。", C_DIM));
+
         // ---------- 自定义拦截（v3.7.0；v3.7.1 起加授权门）----------
         box.addView(section("自定义拦截"));
         boolean canCustom = false;
